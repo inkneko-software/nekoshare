@@ -1,0 +1,14 @@
+services:
+  mysql:
+    container_name: nekoshare-mysql
+    image: mysql:8.0.28-debian
+    restart: unless-stopped
+    volumes:
+      - ./nekoshare.sql:/docker-entrypoint-initdb.d/nekoshare.sql
+      - ./mysql:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - TZ=Asia/Shanghai
+      - LANG=C.UTF-8
