@@ -32,7 +32,9 @@ if __name__ == "__main__":
             for data in data.itertuples(index=False):
                 if math.isnan(data.今开):
                     continue
-
+                if math.isnan(data.量比):
+                    continue
+                print(data)
                 sql = """
                 INSERT INTO stock_data (stock_code, stock_name, price, open, high, low, percent_change, pre_close, quantity_ratio, float_share, float_cap, pe_ratio)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -103,6 +105,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("进程由用户终止")
             break
-        finally:
-            cursor.close()
-            conn.close()
+
+    cursor.close()
+    conn.close()
