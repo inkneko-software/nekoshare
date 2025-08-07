@@ -117,9 +117,8 @@ if __name__ == "__main__":
                 fetch_day_price()
                 time.sleep(60*5)
             elif (current_time.hour == 9 and current_time.minute >= 35 ) or (current_time.hour >= 10 and current_time.hour < 16):
-                if current_time.minute == 30 or (current_time.minute % 30 == 0 and current_time.minute >= 45):
-                    print(f"{time.strftime('%Y-%m-%d %H:%M')} 每30分钟拉取数据...")
-                    fetch_day_price()
+                print(f"{time.strftime('%Y-%m-%d %H:%M')} 每30分钟拉取数据...")
+                fetch_day_price()
                 time.sleep(60*30)
 
         time.sleep(1)  
