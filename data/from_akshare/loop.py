@@ -98,7 +98,6 @@ def fetch_day_price():
         
         conn.commit()
         print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
-        time.sleep(60*15)  # Sleep for 60 seconds before the next request
     except KeyboardInterrupt:
         print("进程由用户终止")
     cursor.close()
