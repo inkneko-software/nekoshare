@@ -27,6 +27,7 @@ def fetch_day_price():
 
         """
         for data in data.itertuples(index=False):
+            
             if math.isnan(data.今开):
                 continue
             if math.isnan(data.量比):
@@ -92,10 +93,6 @@ def fetch_day_price():
                 data.最新价 == round(data.昨收 * 1.1, 2) 
             )
             cursor.execute(sql, vals)
-
-        
-
-        
         conn.commit()
         print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
     except KeyboardInterrupt:
@@ -104,7 +101,9 @@ def fetch_day_price():
     conn.close()
 
 if __name__ == "__main__":
-    
+    if sys.argv.__len__() > 1 and sys.argv[1] == "manual":
+        fetch_day_price()
+        sys.exit(0)
     while True:
         #在9点25分拉取一次数据，在9点35分后拉取一次数据
         #9点35分后每30分钟拉取一次数据
