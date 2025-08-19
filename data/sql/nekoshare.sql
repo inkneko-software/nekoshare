@@ -12,7 +12,7 @@ CREATE TABLE stock_data (
     low DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '最低价，单位为元',
     percent_change DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT '涨跌幅，单位为百分比',
     pre_close DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '前一日收盘价，单位为元',
-    quantity_ratio DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT '量比，单位为百分比',
+    quantity_ratio DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '量比，单位为百分比',
     float_share DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '流通股本，单位为股',
     float_cap DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '流通市值，单位为元',
     pe_ratio DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '市盈率',
