@@ -4,6 +4,7 @@ import pool from '@/lib/db';
 import StockDayPrice from '@/lib/StockDayPrice';
 import StockData from '@/lib/StockData';
 import modelAOptimized, { ModelAResult } from '@/lib/ModelA';
+import dayjs from 'dayjs';
 
 
 export interface PreOpenQualitiedResult extends StockData {
@@ -37,13 +38,22 @@ export interface TimeRangeBacktraceResult {
 
 export async function GET(req: NextRequest) {
 
+    const start_date_param = req.nextUrl.searchParams.get('start');
+    const end_date_param = req.nextUrl.searchParams.get('end');
+
+    if (!start_date_param || !isValidRealDate(start_date_param)) {
+        return new NextResponse('缺少或无效的开始日期参数', { status: 400 });
+    }
+    if (!end_date_param || !isValidRealDate(end_date_param)) {
+        return new NextResponse('缺少或无效的结束日期参数', { status: 400 });
+    }
     //将指定日期范围内的交易日数据进行回溯
     //回测方法为：选取出每日前5的股票，计算当日涨停概率，以及当日的整体收益率
-    const start_date = new Date("2025-06-01");
+    const start_date = new Date(dayjs(start_date_param, 'YYYYMMDD').toDate());
     let results: TimeRangeBacktraceResult[] = [];
     let time_range_rewards = 0;
     
-    for (let d = new Date(start_date); d <= new Date("2025-06-31"); d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(start_date); d <= new Date(dayjs(end_date_param, 'YYYYMMDD').toDate()); d.setDate(d.getDate() + 1)) {
         const trade_date = d.toISOString().split('T')[0].replace(/-/g, '');
         console.log(trade_date);
 

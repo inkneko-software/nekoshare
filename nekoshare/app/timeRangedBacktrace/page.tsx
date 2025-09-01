@@ -20,7 +20,7 @@ export default function Home() {
 
         async function fetchQualifiedStocks() {
             try {
-                const response = await fetch('/api/quantitative/getTimeRageBacktraceResults');
+                const response = await fetch('/api/quantitative/getTimeRageBacktraceResults?start=20250401&end=20250831');
                 if (!response.ok) {
                     throw new Error('网络响应错误');
                 }
