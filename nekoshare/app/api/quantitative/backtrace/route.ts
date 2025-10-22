@@ -94,6 +94,14 @@ export async function GET(req: NextRequest) {
         if (quantitativeResult.meaning_difference_ratio_180days <10 && quantitativeResult.meaning_difference_ratio_180days > 0) {
           score += 25 * ((10 - quantitativeResult.meaning_difference_ratio_180days) / 10);
         }
+
+        if (quantitativeResult.meaning_difference_ratio_180days > 20 ){
+          score = 0;
+      }
+
+      if (quantitativeResult.higher_than_today_open_180days > 10) {
+        score = 0;
+      }
         result.push({
           ...stockInfo,
           pre_close: stockDayPriceOfSelectedDay.pre_close,
