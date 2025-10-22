@@ -7,7 +7,7 @@ import time
 import mysql.connector
 import sys
 
-day_range = 270
+day_range = 2900
 
 
 def read_day_file(filepath):
@@ -96,10 +96,11 @@ def read_sh_main():
         for f in folder.iterdir()
         if f.is_file()
         and (
-            f.name.startswith("sh600")
-            or f.name.startswith("sh601")
-            or f.name.startswith("sh603")
-            or f.name.startswith("sh605")
+            f.name.startswith("sh6")
+            # or f.name.startswith("sh601")
+            # or f.name.startswith("sh603")
+            # or f.name.startswith("sh605")
+            # or f.name.startswith("sh688")
         )
     ]
 
@@ -118,7 +119,42 @@ def read_sh_main():
         data[file.lstrip('sh').rstrip('.day')] = stock_history
     return data
 
+def read_bj_stocks():
+    """
+    读取上证主板日线数据
 
+    返回字典,key=证券代码,value=pd.DataFrame，DataFrame定义见read_day_file()
+    """
+
+    sh_dir = "hsjday/bj/lday"
+    folder = Path(sh_dir)
+    files = [
+        f.name
+        for f in folder.iterdir()
+        if f.is_file()
+        and (
+            f.name.startswith("bj82")
+            or f.name.startswith("bj83")
+            or f.name.startswith("bj87")
+            or f.name.startswith("bj88")
+            or f.name.startswith("bj920")
+        )
+    ]
+
+    data = {}
+    today = pd.Timestamp.today()
+    start_date = today - pd.Timedelta(days=day_range)
+    for file in files:
+        stock_history = read_day_file(sh_dir + "/" + file)
+        # recent_data = stock_history[(stock_history["date"] >= start_date.date())]
+        # 忽略掉最近90天没有数据的股票
+        if (
+            stock_history["date"].iloc[-1]
+            < (datetime.now() - timedelta(days=90)).date()
+        ):
+            continue
+        data[file.lstrip('bj').rstrip('.day')] = stock_history
+    return data
 def read_sh_main_code(code):
     """
     读取上证主板某个证券的日线数据
@@ -147,8 +183,8 @@ def read_sz_main():
         f.name
         for f in folder.iterdir()
         if f.is_file()
-        and (f.name.startswith("sz000") or f.name.startswith("sz001"))
-        or f.name.startswith("sz002")
+        and (f.name.startswith("sz000") or f.name.startswith("sz001")
+        or f.name.startswith("sz002") or f.name.startswith("sz300") or f.name.startswith("sz003"))
     ]
     data = {}
     today = pd.Timestamp.today()
@@ -343,8 +379,9 @@ def load_stock_day_price_to_mysql():
     # 读取上证主板和深证主板的日线数据
     sh_data = read_sh_main()
     sz_data = read_sz_main()
+    bj_data = read_bj_stocks()
 
-    stocks_data = {**sh_data, **sz_data}
+    stocks_data = {**sh_data, **sz_data, **bj_data}
 
     # 保存至mysql
     conn = mysql.connector.connect(
@@ -362,8 +399,8 @@ def load_stock_day_price_to_mysql():
         count += 1
 
         sql = """
-                INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, close_at_limit_high)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, percent_change, close_at_limit_high)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                 stock_name = VALUES(stock_name),
                 open = VALUES(open),
@@ -373,10 +410,11 @@ def load_stock_day_price_to_mysql():
                 pre_close = VALUES(pre_close),
                 volume = VALUES(volume),
                 amount = VALUES(amount),
+                percent_change = VALUES(percent_change),
                 close_at_limit_high = VALUES(close_at_limit_high)
                 """
         records = [
-            (code, "", day.date, day.open, day.close, day.high, day.low, day.last_close, day.volume, day.amount, 1 if day.close_at_limit_high else 0)
+            (code, "", day.date, day.open, day.close, day.high, day.low, day.last_close, day.volume, day.amount, day.percent, 1 if day.close_at_limit_high else 0)
             for day in df.itertuples(index=False)
         ]
         cursor.executemany(sql, records)
@@ -444,8 +482,8 @@ def load_pre_open_data_to_mysql():
         cursor.execute(sql, vals)
 
         sql = """
-                INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, close_at_limit_high)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, percent_change, close_at_limit_high)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                 stock_name = VALUES(stock_name),
                 open = VALUES(open),
@@ -455,6 +493,7 @@ def load_pre_open_data_to_mysql():
                 pre_close = VALUES(pre_close),
                 volume = VALUES(volume),
                 amount = VALUES(amount),
+                percent_change = VALUES(percent_change),
                 close_at_limit_high = VALUES(close_at_limit_high)
                 """
         vals = (
@@ -471,9 +510,6 @@ def load_pre_open_data_to_mysql():
             0
         )
         cursor.execute(sql, vals)
-
-   
-
     
     conn.commit()
     cursor.close()
@@ -487,5 +523,5 @@ if __name__ == "__main__":
         sys.exit(0)
 
     #收盘数据下载
-    load_stock_info_to_mysql()
+    # load_stock_info_to_mysql()
     load_stock_day_price_to_mysql()
