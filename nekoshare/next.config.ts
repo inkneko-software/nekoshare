@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  rewrites: async function () {
+      return [
+        {
+          source: '/api/pysdk/:path*',
+          destination: process.env.PYSDK_HOST + '/api/pysdk/:path*',
+        },
+      ]
+  }
 };
 
 export default nextConfig;

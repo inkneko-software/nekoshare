@@ -35,6 +35,14 @@ export default function Home() {
     return (
         <Container >
             <Typography variant='h4' sx={{ marginBottom: 2, marginTop: 2 }}>开盘前符合条件: {qualifiedStocks.length}</Typography>
+            <Typography variant='body1' sx={{ marginBottom: 2 }}>
+                经验之谈：控仓，一定要给自己补一倍仓的机会，因为有时候当天被套8%以上，需要补仓等三日内解套<br/>
+                70°加速的票不要买，短期累计的获利盘较高容易砸盘，同时注意N字结构<br/>
+                历史新高的票不要买，容易冲高回落<br/>
+                开的距离前面压力位高于2%的也要小心，最好是开在压力位上面0%-1%之间<br/>
+                减持、财报数据很重要，一定要注意
+
+            </Typography>
             {
                 qualifiedStocks.length > 0 ? (
                     <Box sx={{ marginBottom: 2 }}>

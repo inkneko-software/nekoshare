@@ -9,10 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
+    "@mui/material-nextjs": "^7.3.3",
     "@mui/x-date-pickers": "^8.9.2",
     "dayjs": "^1.11.13",
     "lightweight-charts": "^5.0.8",

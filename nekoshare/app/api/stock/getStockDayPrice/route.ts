@@ -1,6 +1,8 @@
 // app/api/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
+import StockDayPrice from '@/lib/StockDayPrice';
 
 function isValidRealDate(str: string): boolean {
     if (!/^\d{8}$/.test(str)) return false;
@@ -39,9 +41,17 @@ export async function GET(req: NextRequest) {
         params.push(endDate);
     }
 
+    const formatter = new Intl.DateTimeFormat('en-CA')
     try {
-        const [rows] = await pool.query(query, params);
-        return NextResponse.json({ data: rows });
+        const [rows] = await pool.query<(StockDayPrice & RowDataPacket)[]>(query, params);
+        return NextResponse.json({ data: rows.map(item => ({
+            trade_date: formatter.format(new Date( item.trade_date)),
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            close: item.close,
+            volume: item.volume
+        })) });
     } catch (error) {
         console.error('DB error:', error);
         return new NextResponse('数据库查询失败', { status: 500 });
