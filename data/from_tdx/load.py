@@ -82,9 +82,9 @@ def read_day_file(filepath):
     return df
 
 
-def read_sh_main():
+def read_sh_stocks():
     """
-    读取上证主板日线数据
+    读取上证日线数据
 
     返回字典,key=证券代码,value=pd.DataFrame，DataFrame定义见read_day_file()
     """
@@ -121,7 +121,7 @@ def read_sh_main():
 
 def read_bj_stocks():
     """
-    读取上证主板日线数据
+    读取北证日线数据
 
     返回字典,key=证券代码,value=pd.DataFrame，DataFrame定义见read_day_file()
     """
@@ -171,9 +171,9 @@ def read_sh_main_code(code):
     return stock_history
 
 
-def read_sz_main():
+def read_sz_stocks():
     """
-    读取深证主板日线数据
+    读取深证日线数据
 
     返回字典,key=证券代码,value=pd.DataFrame，DataFrame定义见read_day_file()
     """
@@ -184,7 +184,7 @@ def read_sz_main():
         for f in folder.iterdir()
         if f.is_file()
         and (f.name.startswith("sz000") or f.name.startswith("sz001")
-        or f.name.startswith("sz002") or f.name.startswith("sz300") or f.name.startswith("sz003"))
+        or f.name.startswith("sz002") or f.name.startswith("sz30") or f.name.startswith("sz003"))
     ]
     data = {}
     today = pd.Timestamp.today()
@@ -371,14 +371,14 @@ def load_stock_info_to_mysql():
 
 def load_stock_day_price_to_mysql():
     """
-    读取沪深主板日线数据，并保存至MySQL数据库
+    读取沪深日线数据，并保存至MySQL数据库
     """
 
     t_start = time.time()
-    print("读取沪深主板数据...")
+    print("读取沪深日线数据...")
     # 读取上证主板和深证主板的日线数据
-    sh_data = read_sh_main()
-    sz_data = read_sz_main()
+    sh_data = read_sh_stocks()
+    sz_data = read_sz_stocks()
     bj_data = read_bj_stocks()
 
     stocks_data = {**sh_data, **sz_data, **bj_data}
