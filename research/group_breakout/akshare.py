@@ -1,6 +1,19 @@
 import pandas as pd
 import requests
 from urllib.parse import urlencode
+from  selenium.common.exceptions import *
+
+import math
+from typing import List, Dict
+
+import pandas as pd
+import requests
+
+from akshare.utils.tqdm import get_tqdm
+from group_breakout.selenium import _selenium_get
+from group_breakout.selenium import ChromeDriverSingleton
+import json
+import time
 
 
 def stock_zh_a_spot_em() -> pd.DataFrame:
@@ -112,17 +125,6 @@ def stock_zh_a_spot_em() -> pd.DataFrame:
     return temp_df
 
 
-import math
-from typing import List, Dict
-
-import pandas as pd
-import requests
-
-from akshare.utils.tqdm import get_tqdm
-from group_breakout.selenium import _selenium_get
-import json
-
-
 def fetch_paginated_data(url: str, base_params: Dict, timeout: int = 15):
     """
     东方财富-分页获取数据并合并结果
@@ -141,10 +143,25 @@ def fetch_paginated_data(url: str, base_params: Dict, timeout: int = 15):
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
     }
 
+    def by_pass():
+        bypass = _selenium_get("https://quote.eastmoney.com/center/gridlist.html#hs_a_board")
+        bypass = _selenium_get("https://quote.eastmoney.com/center/gridlist.html#hs_a_board")
+
+    driver = ChromeDriverSingleton()
+    driver.get("https://i.eastmoney.com/websitecaptcha/slidervalid")
+    while True:
+        if driver.driver.page_source.find("成功") != -1:
+            break
+        print("请完成滑块验证码")
+        time.sleep(1)
     # 复制参数以避免修改原始参数
     params = base_params.copy()
     # 获取第一页数据，用于确定分页信息
-    r = _selenium_get(url + "?" + urlencode(params), True)
+    try:
+        r = _selenium_get(url + "?" + urlencode(params), True)
+    except NoSuchElementException:
+        by_pass()
+        r = _selenium_get(url + "?" + urlencode(params), True)
     data_json = json.loads(r)
     # 计算分页信息
     per_page_num = len(data_json["data"]["diff"])
@@ -158,7 +175,11 @@ def fetch_paginated_data(url: str, base_params: Dict, timeout: int = 15):
     # 获取剩余页面数据
     for page in tqdm(range(2, total_page + 1), leave=False):
         params.update({"pn": page})
-        r = _selenium_get(url + "?" + urlencode(params), True)
+        try:
+            r = _selenium_get(url + "?" + urlencode(params), True)
+        except NoSuchElementException:
+            by_pass()
+            r = _selenium_get(url + "?" + urlencode(params), True)
         data_json = json.loads(r)
         inner_temp_df = pd.DataFrame(data_json["data"]["diff"])
         temp_list.append(inner_temp_df)
