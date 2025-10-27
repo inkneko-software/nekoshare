@@ -8,17 +8,15 @@ import json
 import math
 import tushare as ts
 
-# import group_breakout.akshare as ak
-import akshare as ak
+import group_breakout.akshare as ak
+# import akshare as ak
 from datetime import date, datetime
 import mysql.connector
 from mysql.connector import pooling
 import time
-import requests
-import re
 import pandas as pd
 from bs4 import BeautifulSoup
-
+import os
 
 from entity.THSIndustry import THSIndustry
 from entity.THSIndustryDayPrice import THSIndustryDayPrice
@@ -31,11 +29,7 @@ from group_breakout.selenium import _selenium_get
 
 from sqlalchemy import create_engine
 import pandas as pd
-
-engine = create_engine("mysql+pymysql://root:test@10.200.0.20/nekoshare")
-
 import warnings
-
 # 屏蔽特定类型的弃用警告
 warnings.filterwarnings(
     "ignore",
@@ -43,7 +37,13 @@ warnings.filterwarnings(
     message=".*Series.fillna with 'method' is deprecated.*",
 )
 
-ts.set_token("--")
+tushare_api_key = os.environ.get("TUSHARE_KEY")
+mysql_host = os.environ.get("MYSQL_HOST")
+mysql_user = os.environ.get("MYSQL_USER")
+mysql_passwd = os.environ.get("MYSQL_PASSWD")
+
+engine = create_engine(f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare")
+ts.set_token(tushare_api_key)
 
 
 class MySQLConnectionPool:
@@ -57,9 +57,9 @@ class MySQLConnectionPool:
 
     def __init_connection(self):
         pool = pooling.MySQLConnectionPool(
-            host="10.200.0.20",
-            user="root",
-            password="test",
+            host=mysql_host,
+            user=mysql_user,
+            password=mysql_passwd,
             database="nekoshare",
             pool_name="nekoshare_pool",
             pool_size=5,
@@ -338,7 +338,9 @@ def fetch_rk_and_save():
                 continue
             if math.isnan(data.量比):
                 continue
-
+            if math.isnan(data.pe_dynamic):
+                continue
+            
             sql = """
             INSERT INTO stock_data (stock_code, stock_name, price, open, high, low, percent_change, pre_close, quantity_ratio, float_share, float_cap, pe_ratio)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -369,6 +371,7 @@ def fetch_rk_and_save():
                 data.流通市值 / 100000000,
                 data.pe_dynamic,
             )
+            print(vals)
             pool.query(sql, vals)
 
             sql = """
@@ -400,6 +403,7 @@ def fetch_rk_and_save():
                 data.涨跌幅,
                 data.最新价 == round(data.昨收 * 1.1, 2),
             )
+            print(vals)
             pool.query(sql, vals)
         print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
     except KeyboardInterrupt:
@@ -671,7 +675,9 @@ def get_stock_day_price(
         param = (code,)
 
     df_k = pd.read_sql(sql + date_sql, engine, params=param)
-
+    if len(df_k) == 0:
+        return []
+    
     if fq == "qfq":
         sql = """
         SELECT stock_code, trade_date, adj_factor FROM stock_day_qfq
@@ -794,10 +800,11 @@ def loop():
     # 每个交易日的9点30后可以开始获取，注意频率以及反爬
     fetch_rk_and_save()
     fetch_today_qfq_and_save()
+    fetch_and_save(marketOnly=True)
 
 
 if __name__ == "__main__":
-    fetch_and_save(marketOnly=True)
+    loop()
     # fetch_all_qfq_and_save()
     # loop()
     # print(get_stock_day_price("600268", "20140101"))
