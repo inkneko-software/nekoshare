@@ -9,6 +9,7 @@ import queue
 import asyncio
 import group_breakout.trade_day as trade_day
 from datetime import timedelta, date, datetime
+import os
 # class Input(BaseModel):
 #     a: float
 #     b: float
@@ -102,4 +103,4 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=3010)
+    uvicorn.run(app, host="0.0.0.0", port=3010)
