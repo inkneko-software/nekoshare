@@ -2,7 +2,7 @@ services:
   nekoshare-nextjs:
     build:
       context: ./nekoshare
-      dockerfile: nekoshare/Dockerfile
+      dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_PYSDK_HOST}
     env_file:
