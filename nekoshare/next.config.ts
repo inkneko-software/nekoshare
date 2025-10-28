@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
       return [
         {
           source: '/api/pysdk/:path*',
-          destination: process.env.PYSDK_HOST + '/api/pysdk/:path*',
+          destination: "http://" + process.env.NEXT_PUBLIC_PYSDK_HOST + '/api/pysdk/:path*',
         },
       ]
   }
