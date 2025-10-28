@@ -151,6 +151,8 @@ export default function StrategyExecutionPage() {
                         batchResults[i].reward = reward
                     }
                     setResults([...batchResults]);
+                    localStorage.setItem('v2/strategy-execution::breakout_results:' + selectedTradeDate.format("YYYYMMDD"), JSON.stringify(batchResults));
+
                 }
             }
             calculateRewards()
