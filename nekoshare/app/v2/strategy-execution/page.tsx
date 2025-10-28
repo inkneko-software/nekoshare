@@ -75,7 +75,8 @@ export default function StrategyExecutionPage() {
         setCandlesticks([])
         setRectangles([])
 
-        const ws = new WebSocket(`ws://${process.env.NEXT_PUBLIC_PYSDK_HOST}/ws/breakout_execution`);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${process.env.NEXT_PUBLIC_PYSDK_HOST}/ws/breakout_execution`);
         let batchResults: BreakoutStrategyExecutingResult[] = []
         let batchId: NodeJS.Timeout | null = null
         ws.onopen = () => {
