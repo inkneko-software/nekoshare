@@ -1,0 +1,6 @@
+data/sql/mysql/
+data/from_tdx/hsjday/
+venv/
+research/chrome*
+research/driver.zip
+research/*/__pycache__/

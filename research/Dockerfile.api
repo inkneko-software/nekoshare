@@ -1,0 +1,11 @@
+FROM python:3.12-alpine
+
+WORKDIR /research
+
+COPY research /research
+
+RUN apk install --no-cache curl
+RUN pip install -r requirements.txt
+RUN sh driver_download.sh
+
+CMD ["python3", "-m", "group_breakout.http"]

@@ -1,0 +1,23 @@
+services:
+  nekoshare-nextjs:
+    build:
+      context: ./nekoshare
+      dockerfile: nekoshare/Dockerfile
+    env_file:
+      - .env.development
+    ports:
+      - 3000:3000
+  nekoshare-api:
+    build:
+      context: .
+      dockerfile: research/Dockerfile.api
+    env_file:
+      - .env.development
+    ports:
+      - 3010:3010
+  # nekoshare-fetch:
+  #   build:
+  #     context: .
+  #     dockerfile: research/Dockerfile-fetch
+  #   env_file:
+  #     - .env.development
