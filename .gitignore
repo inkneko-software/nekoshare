@@ -1,6 +1,6 @@
 data/sql/mysql/
 data/from_tdx/hsjday/
 venv/
-research/chrome*
-research/driver.zip
+research/chrome-linux64
+research/chromedriver-linux64
 research/*/__pycache__/
