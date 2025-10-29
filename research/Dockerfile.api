@@ -3,7 +3,8 @@ FROM python:3.12-alpine
 WORKDIR /research
 
 COPY research /research
-
+RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories
+RUN apk update
 RUN apk add --no-cache curl
 RUN apk add --no-cache unzip
 
