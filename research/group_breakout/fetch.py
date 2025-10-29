@@ -912,6 +912,7 @@ def loop():
             fetch_and_save(marketOnly=True)
         else:
             today_first_run = True
+            print(f"{time.strftime('%Y-%m-%d %H:%M')} 休市中")
 
         time.sleep(60 * 5)
         
