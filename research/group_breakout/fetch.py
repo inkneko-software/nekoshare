@@ -813,56 +813,77 @@ def fetch_rk_from_tdx_and_save():
     SELECT stock_code, stock_name
     FROM stock_data
     """
-    results = pool.query(sql)
+    rows = pool.query(sql)
     i = 0
-    for row in results:
+    stocks = {}
+    for row in rows:
         code = row[0]
         name = row[1]
-        # 只能处理沪深数据 
-        if not code.startswith(("6", "0", "3")):
-            continue
-
-        sql = """
-                    INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, percent_change, close_at_limit_high)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                    stock_name = VALUES(stock_name),
-                    open = VALUES(open),
-                    close = VALUES(close),
-                    high= VALUES(high),
-                    low = VALUES(low),
-                    pre_close = VALUES(pre_close),
-                    volume = VALUES(volume),
-                    amount = VALUES(amount),
-                    percent_change = VALUES(percent_change),
-                    close_at_limit_high = VALUES(close_at_limit_high)
-                    """
+        if code.startswith(("6", "0", "3")):
+            stocks[code]=name
         
-        data = client.quotes(symbol=[code])
-        if len(data) == 0:
-            print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} 数据获取失败")
-            continue
-        data = data.iloc[0]
-        if  data.last_close == 0 or data.isna().any():
-            # print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {data} 数据获取不完整")
-            continue
-        vals = (
-            code,
-            name,
-            str(date.today()),
-            float(data.open),
-            float(data.price),
-            float(data.high),
-            float(data.low),
-            float(data.last_close),
-            float(data.vol * 100),
-            float(data.amount),
-            float(round((data.price - data.last_close) /  data.last_close * 100, 2)),
-            bool(data.price == round(data.last_close * 1.1, 2))
-        )
-        pool.query(sql, vals)
-        print(f"\r{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {i}/{len(results)}", end="")
-        i += 1
+    for i in range(0, len(stocks.keys()), 50):
+        datas = client.quotes(symbol=list(stocks.keys())[i:i+50])
+        for data in datas.itertuples():
+            if  data.last_close == 0:
+                # print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {data} 数据获取不完整")
+                i += 1
+                continue
+            code = data.code
+            name = stocks[code]
+            sql = """
+                        INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, percent_change, close_at_limit_high)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                        stock_name = VALUES(stock_name),
+                        open = VALUES(open),
+                        close = VALUES(close),
+                        high= VALUES(high),
+                        low = VALUES(low),
+                        pre_close = VALUES(pre_close),
+                        volume = VALUES(volume),
+                        amount = VALUES(amount),
+                        percent_change = VALUES(percent_change),
+                        close_at_limit_high = VALUES(close_at_limit_high)
+                        """
+            vals = (
+                code,
+                name,
+                str(date.today()),
+                float(data.open),
+                float(data.price),
+                float(data.high),
+                float(data.low),
+                float(data.last_close),
+                float(data.vol * 100),
+                float(data.amount),
+                float(round((data.price - data.last_close) /  data.last_close * 100, 2)),
+                bool(data.price == round(data.last_close * 1.1, 2))
+            )
+            pool.query(sql, vals)
+
+            sql = """
+                UPDATE stock_data
+                SET price = %s,
+                    open = %s,
+                    high = %s,
+                    low = %s,
+                    percent_change = %s,
+                    pre_close = %s
+                WHERE stock_code = %s
+            """
+            vals = (
+                float(data.price),
+                float(data.open),
+                float(data.high),
+                float(data.low),
+                float(round((data.price - data.last_close) /  data.last_close * 100, 2)),
+                float(data.last_close),
+                code,
+            )
+            pool.query(sql, vals)
+            i += 1
+            print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {i}/{len(stocks.keys())}")
     print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
         
 
