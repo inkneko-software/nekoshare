@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
         {
           //建议生产环境直接用nginx拦截直接访问pysdk
           source: '/api/pysdk/:path*',
-          destination: process.env.NEXT_PUBLIC_PYSDK_HOST + '/api/pysdk/:path*',
+          destination: 'http://' + process.env.NEXT_PUBLIC_PYSDK_HOST + '/api/pysdk/:path*',
         },
       ]
   }
