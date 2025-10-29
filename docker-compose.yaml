@@ -23,3 +23,11 @@ services:
       dockerfile: research/Dockerfile.fetch
     env_file:
       - .env.development
+  mysql:
+    container_name: nekoshare-mysql
+    image: mysql:8.0.28-debian
+    restart: unless-stopped
+    volumes:
+      - ./mysql:/var/lib/mysql
+    env_file:
+      - .env.development
