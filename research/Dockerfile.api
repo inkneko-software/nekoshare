@@ -4,8 +4,13 @@ WORKDIR /research
 
 COPY research /research
 
-RUN apk install --no-cache curl
+RUN apk add --no-cache curl
+RUN apk add --no-cache unzip
+
+RUN unzip driver.zip
+RUN unzip chrome.zip
+
 RUN pip install -r requirements.txt
-RUN sh driver_download.sh
+
 
 CMD ["python3", "-m", "group_breakout.http"]
