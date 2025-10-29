@@ -42,9 +42,9 @@ warnings.filterwarnings(
 )
 
 tushare_api_key = os.environ.get("TUSHARE_KEY")
-mysql_host = os.environ.get("MYSQL_HOST")
-mysql_user = os.environ.get("MYSQL_USER")
-mysql_passwd = os.environ.get("MYSQL_PASSWD")
+mysql_host = os.environ.get("DB_HOST")
+mysql_user = os.environ.get("DB_USER")
+mysql_passwd = os.environ.get("DB_PASSWORD")
 
 engine = create_engine(
     f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare"
