@@ -17,9 +17,9 @@ services:
       - .env.development
     ports:
       - 3010:3010
-  # nekoshare-fetch:
-  #   build:
-  #     context: .
-  #     dockerfile: research/Dockerfile-fetch
-  #   env_file:
-  #     - .env.development
+  nekoshare-fetch:
+    build:
+      context: .
+      dockerfile: research/Dockerfile.fetch
+    env_file:
+      - .env.development

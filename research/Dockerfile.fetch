@@ -1,0 +1,12 @@
+FROM python:3.12-alpine
+
+WORKDIR /research
+
+COPY ./research /research
+
+RUN apk add --no-cache curl
+RUN apk add --no-cache unzip
+RUN pip install -r requirements.txt
+RUN sh driver_download.sh
+
+CMD [ "python3", "-m", "group_breakout.fetch" ]

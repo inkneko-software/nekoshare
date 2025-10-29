@@ -8,8 +8,9 @@ import json
 import math
 import tushare as ts
 
-import group_breakout.akshare as ak
-# import akshare as ak
+# import group_breakout.akshare as ak
+
+import akshare as ak
 from datetime import date, datetime
 import mysql.connector
 from mysql.connector import pooling
@@ -27,9 +28,12 @@ from entity.StockDayPrice import StockDayPrice
 from group_breakout.trade_day import get_latest_trading_day
 from group_breakout.selenium import _selenium_get
 
+import requests.exceptions
 from sqlalchemy import create_engine
 import pandas as pd
+from mootdx.quotes import Quotes
 import warnings
+
 # 屏蔽特定类型的弃用警告
 warnings.filterwarnings(
     "ignore",
@@ -42,7 +46,9 @@ mysql_host = os.environ.get("MYSQL_HOST")
 mysql_user = os.environ.get("MYSQL_USER")
 mysql_passwd = os.environ.get("MYSQL_PASSWD")
 
-engine = create_engine(f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare")
+engine = create_engine(
+    f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare"
+)
 ts.set_token(tushare_api_key)
 
 
@@ -88,7 +94,6 @@ class MySQLConnectionPool:
 
     def conn(self):
         return self.pool.get_connection()
-
 
 
 def log(key, status_code, headers, text):
@@ -340,7 +345,7 @@ def fetch_rk_and_save():
                 continue
             if math.isnan(data.pe_dynamic):
                 continue
-            
+
             sql = """
             INSERT INTO stock_data (stock_code, stock_name, price, open, high, low, percent_change, pre_close, quantity_ratio, float_share, float_cap, pe_ratio)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -482,6 +487,7 @@ def fetch_today_qfq_and_save():
     df = pro.adj_factor(
         ts_code="", trade_date=get_latest_trading_day().strftime("%Y%m%d")
     )
+    print(df)
     records = [
         (row.ts_code.split(".")[0], row.trade_date, row.adj_factor)
         for row in df.itertuples()
@@ -677,7 +683,7 @@ def get_stock_day_price(
     df_k = pd.read_sql(sql + date_sql, engine, params=param)
     if len(df_k) == 0:
         return []
-    
+
     if fq == "qfq":
         sql = """
         SELECT stock_code, trade_date, adj_factor FROM stock_day_qfq
@@ -773,34 +779,121 @@ def get_stock_data(code: str) -> StockData:
     WHERE stock_code = %s
     """
     vals = (code,)
-    result = pool.query(sql, vals)
-    if result:
-        stock_data = StockData(
-            stock_code=result[0],
-            stock_name=result[1],
-            price=float(result[2]),
-            open=float(result[3]),
-            high=float(result[4]),
-            low=float(result[5]),
-            percent_change=float(result[6]),
-            pre_close=float(result[7]),
-            quantity_ratio=float(result[8]),
-            float_share=float(result[9]),
-            float_cap=float(result[10]),
-            pe_ratio=float(result[11]),
-            industry=result[12],
-            area=result[13],
-        )
-        return stock_data
-    else:
+    results = pool.query(sql, vals)
+    if len(results) == 0:
         return None
+    
+    result = results[0]
+    stock_data = StockData(
+        stock_code=result[0],
+        stock_name=result[1],
+        price=float(result[2]),
+        open=float(result[3]),
+        high=float(result[4]),
+        low=float(result[5]),
+        percent_change=float(result[6]),
+        pre_close=float(result[7]),
+        quantity_ratio=float(result[8]),
+        float_share=float(result[9]),
+        float_cap=float(result[10]),
+        pe_ratio=float(result[11]),
+        industry=result[12],
+        area=result[13],
+    )
+    return stock_data
+
+def fetch_rk_from_tdx_and_save():
+    """
+    从通达信获取实时日K数据
+    """
+    print(f"{time.strftime('%Y-%m-%d %H:%M')} 开始从通达信获取实时日K数据")
+    pool = MySQLConnectionPool()
+    client = Quotes.factory(market="std", multithread=True)
+    sql = """
+    SELECT stock_code, stock_name
+    FROM stock_data
+    """
+    results = pool.query(sql)
+    i = 0
+    for row in results:
+        code = row[0]
+        name = row[1]
+        # 只能处理沪深数据 
+        if not code.startswith(("6", "0", "3")):
+            continue
+
+        sql = """
+                    INSERT INTO stock_day_price (stock_code, stock_name, trade_date, open, close, high, low, pre_close, volume, amount, percent_change, close_at_limit_high)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    stock_name = VALUES(stock_name),
+                    open = VALUES(open),
+                    close = VALUES(close),
+                    high= VALUES(high),
+                    low = VALUES(low),
+                    pre_close = VALUES(pre_close),
+                    volume = VALUES(volume),
+                    amount = VALUES(amount),
+                    percent_change = VALUES(percent_change),
+                    close_at_limit_high = VALUES(close_at_limit_high)
+                    """
+        
+        data = client.quotes(symbol=[code])
+        if len(data) == 0:
+            print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} 数据获取失败")
+            continue
+        data = data.iloc[0]
+        if  data.last_close == 0 or data.isna().any():
+            # print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {data} 数据获取不完整")
+            continue
+        vals = (
+            code,
+            name,
+            str(date.today()),
+            float(data.open),
+            float(data.price),
+            float(data.high),
+            float(data.low),
+            float(data.last_close),
+            float(data.vol * 100),
+            float(data.amount),
+            float(round((data.price - data.last_close) /  data.last_close * 100, 2)),
+            bool(data.price == round(data.last_close * 1.1, 2))
+        )
+        pool.query(sql, vals)
+        print(f"\r{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {i}/{len(results)}", end="")
+        i += 1
+    print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
+        
 
 
 def loop():
-    # 每个交易日的9点30后可以开始获取，注意频率以及反爬
-    fetch_rk_and_save()
-    fetch_today_qfq_and_save()
-    fetch_and_save(marketOnly=True)
+    today_first_run = True
+    while True:
+        # 每个交易日的9点30后可以开始获取，注意频率以及反爬
+        if (
+            get_latest_trading_day() == datetime.now().date()
+            and (
+                datetime.now().hour > 9
+                or (datetime.now().hour == 9 and datetime.now().minute >= 30)
+            )
+            and (datetime.now().hour < 16)
+        ):
+            if today_first_run:
+                today_first_run = False
+                fetch_today_qfq_and_save()
+                try:
+                    fetch_rk_and_save()
+                except requests.exceptions.ConnectionError:
+                    print(f"{time.strftime('%Y-%m-%d %H:%M')} 获取东方财富实时数据失败")
+
+            fetch_rk_from_tdx_and_save()
+            fetch_and_save(marketOnly=True)
+        else:
+            today_first_run = True
+
+        time.sleep(60 * 5)
+        
 
 
 if __name__ == "__main__":
@@ -808,3 +901,10 @@ if __name__ == "__main__":
     # fetch_all_qfq_and_save()
     # loop()
     # print(get_stock_day_price("600268", "20140101"))
+    # 标准市场
+    # client = Quotes.factory(market="std", multithread=True, heartbeat=True)
+    # # k 线数据
+    # client.bars(symbol="600036", frequency=9, offset=10)
+
+    # client.quotes(symbol=["000001", "600300"])
+    # fetch_rk_from_tdx_and_save()

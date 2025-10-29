@@ -15,7 +15,7 @@ class ChromeDriverSingleton:
 
     def __init_broswer(self):
         opts = Options()
-        # opts.add_argument("--headless=new")  # 需要无头时启用
+        opts.add_argument("--headless=new")  # 需要无头时启用
         opts.binary_location = "chrome-linux64/chrome"
         # opts.add_experimental_option("detach", True)
         opts.add_argument("--disable-dev-shm-usage")
@@ -57,11 +57,10 @@ class ChromeDriverSingleton:
         if "Nginx forbidden" in source:
             print(source)
             raise Exception("Nginx forbidden")
-        time.sleep(5)
+        time.sleep(1)
         if raw_js:
             source = self.driver.find_element(By.TAG_NAME, "pre").text
         return source
-
 
 def _selenium_get(url: str, raw_js=False) -> str:
     return ChromeDriverSingleton().get(url, raw_js=raw_js)
