@@ -496,13 +496,7 @@ def fetch_today_qfq_and_save():
 
 
 def fetch_and_save(marketOnly=False):
-    conn = mysql.connector.connect(
-        host="10.200.0.20",
-        user="root",
-        password="test",
-        database="nekoshare",
-    )
-    cursor = conn.cursor()
+    pool = MySQLConnectionPool()
     # sql语句参考data/sql/nekoshare.sql 中的表结构设计
 
     # 获取行业信息
@@ -518,8 +512,7 @@ def fetch_and_save(marketOnly=False):
         name = VALUES(name)
         """
         vals = (industry.code, industry.name)
-        cursor.execute(sql, vals)
-        conn.commit()
+        pool.query(sql, vals)
 
         print(f"  获取并保存行业日线数据...")
         # 获取行业日线数据
@@ -552,8 +545,7 @@ def fetch_and_save(marketOnly=False):
             for price in prices
         ]
         print(records)
-        cursor.executemany(sql, records)
-        conn.commit()
+        pool.queryMany(sql, records)
 
         # 如果只更新市场行情，则跳过成分股获取与保存
         if marketOnly:
@@ -573,8 +565,7 @@ def fetch_and_save(marketOnly=False):
             (stock.industry_code, stock.stock_code, stock.stock_name)
             for stock in stocks
         ]
-        cursor.executemany(sql, records)
-        conn.commit()
+        pool.queryMany(sql, records)
         time.sleep(5)
     print("数据获取完成")
 
