@@ -566,7 +566,6 @@ def fetch_and_save(marketOnly=False):
             for stock in stocks
         ]
         pool.queryMany(sql, records)
-        time.sleep(5)
     print("数据获取完成")
 
 
