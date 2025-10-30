@@ -34,6 +34,9 @@ import pandas as pd
 from mootdx.quotes import Quotes
 import warnings
 
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
+
 # 屏蔽特定类型的弃用警告
 warnings.filterwarnings(
     "ignore",
@@ -94,15 +97,6 @@ class MySQLConnectionPool:
 
     def conn(self):
         return self.pool.get_connection()
-
-
-def log(key, status_code, headers, text):
-    pass
-    # print("--------------------------------")
-    # print(f"请求 {key} 返回状态码: {status_code} , headers: {headers} , text: {text[:200]}...")
-    # print("--------------------------------")
-
-
 def fetch_ths_industries() -> list[THSIndustry]:
     """
     获取同花顺所有行业列表与代码
@@ -135,7 +129,6 @@ def fetch_ths_industry_stocks(code: str) -> list[THSIndustryStock]:
     soup = BeautifulSoup(res, "lxml")
     page_num = soup.find(name="span", attrs={"class": "page_info"})
     page_num = page_num.text.split("/")[1] if page_num != None else 1
-    print(page_num)
     stocks = []
     for p in range(1, int(page_num) + 1):
         res = _selenium_get(
@@ -329,7 +322,7 @@ def fetch_rk_and_save():
         # https://tushare.pro/document/2?doc_id=372 沪深京实时日线
         data = ak.stock_zh_a_spot_em()
         data = data.rename(columns={"市盈率-动态": "pe_dynamic"})
-        print(f"{time.strftime('%Y-%m-%d %H:%M')} 已拉取实时日线数据, 共{len(data)}条")
+        log.info(f"已拉取实时日线数据, 共{len(data)}条")
 
         """
                         序号      代码      名称     最新价    涨跌幅    涨跌额       成交量         
@@ -376,7 +369,6 @@ def fetch_rk_and_save():
                 data.流通市值 / 100000000,
                 data.pe_dynamic,
             )
-            print(vals)
             pool.query(sql, vals)
 
             sql = """
@@ -408,11 +400,11 @@ def fetch_rk_and_save():
                 data.涨跌幅,
                 data.最新价 == round(data.昨收 * 1.1, 2),
             )
-            print(vals)
+            log.info(vals)
             pool.query(sql, vals)
-        print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
+        log.info(f"数据已存入数据库")
     except KeyboardInterrupt:
-        print("进程由用户终止")
+        log.info("进程由用户终止")
 
 
 def fetch_all_qfq_and_save():
@@ -438,14 +430,14 @@ def fetch_all_qfq_and_save():
                 return df
             except OSError as e:
                 attempt += 1
-                print(
+                log.info(
                     f"[{ts_code}] 频率超限，重试 {attempt}/{max_retry}，等待 {wait_seconds} 秒..."
                 )
                 time.sleep(wait_seconds)
             except Exception as e:
                 # 捕获 Tushare 其他异常
                 attempt += 1
-                print(
+                log.info(
                     f"[{ts_code}] 调用失败：{e}，重试 {attempt}/{max_retry}，等待 {wait_seconds} 秒..."
                 )
                 time.sleep(wait_seconds)
@@ -461,7 +453,7 @@ def fetch_all_qfq_and_save():
     i = 0
     n = data.__len__()
     for stock in data.itertuples():
-        print(f"\r{i}/{n}")
+        log.info(f"获取复权因子 {i}/{n}")
         i += 1
         ts_code = stock.ts_code
         df = fetch_adj_factor_with_retry(ts_code=ts_code)
@@ -487,7 +479,7 @@ def fetch_today_qfq_and_save():
     df = pro.adj_factor(
         ts_code="", trade_date=get_latest_trading_day().strftime("%Y%m%d")
     )
-    print(df)
+    log.info(df)
     records = [
         (row.ts_code.split(".")[0], row.trade_date, row.adj_factor)
         for row in df.itertuples()
@@ -503,7 +495,7 @@ def fetch_and_save(marketOnly=False):
     industries = fetch_ths_industries()
 
     for industry in industries:
-        print(f"正在处理行业 {industry.code} - {industry.name} ...")
+        log.info(f"正在处理行业 {industry.code} - {industry.name} ...")
         # 保存行业信息
         sql = """
         INSERT INTO ths_industry (code, name)
@@ -514,7 +506,7 @@ def fetch_and_save(marketOnly=False):
         vals = (industry.code, industry.name)
         pool.query(sql, vals)
 
-        print(f"  获取并保存行业日线数据...")
+        log.info(f"获取并保存行业日线数据...")
         # 获取行业日线数据
         prices = fetch_ths_industry_day_price(industry)
         # 保存行业日线数据
@@ -544,14 +536,14 @@ def fetch_and_save(marketOnly=False):
             )
             for price in prices
         ]
-        print(records)
+        log.info(records)
         pool.queryMany(sql, records)
 
         # 如果只更新市场行情，则跳过成分股获取与保存
         if marketOnly:
             continue
 
-        print(f"  获取并保存行业成分股...")
+        log.info(f"获取并保存行业成分股...")
         # 获取行业成分股
         stocks = fetch_ths_industry_stocks(industry.code)
         # 保存行业成分股
@@ -566,7 +558,7 @@ def fetch_and_save(marketOnly=False):
             for stock in stocks
         ]
         pool.queryMany(sql, records)
-    print("数据获取完成")
+    log.info("同花顺行业数据获取完成")
 
 
 def get_ths_industry() -> list[THSIndustry]:
@@ -796,7 +788,7 @@ def fetch_rk_from_tdx_and_save():
     """
     从通达信获取实时日K数据
     """
-    print(f"{time.strftime('%Y-%m-%d %H:%M')} 开始从通达信获取实时日K数据")
+    log.info(f"开始从通达信获取实时日K数据")
     pool = MySQLConnectionPool()
     client = Quotes.factory(market="std", multithread=True)
     sql = """
@@ -873,8 +865,8 @@ def fetch_rk_from_tdx_and_save():
             )
             pool.query(sql, vals)
             i += 1
-            print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {i}/{len(stocks.keys())}")
-    print(f"{time.strftime('%Y-%m-%d %H:%M')} 数据已存入数据库")
+            log.info(f"{code} {name} {i}/{len(stocks.keys())}")
+    log.info(f"数据已存入数据库")
         
 
 
@@ -896,13 +888,13 @@ def loop():
                 try:
                     fetch_rk_and_save()
                 except requests.exceptions.ConnectionError:
-                    print(f"{time.strftime('%Y-%m-%d %H:%M')} 获取东方财富实时数据失败")
+                    log.info(f"获取东方财富实时数据失败")
 
             fetch_rk_from_tdx_and_save()
             fetch_and_save(marketOnly=True)
         else:
             today_first_run = True
-            print(f"{time.strftime('%Y-%m-%d %H:%M')} 休市中")
+            log.info(f"休市中")
 
         time.sleep(60 * 5)
         

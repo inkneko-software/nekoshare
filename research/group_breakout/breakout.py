@@ -10,7 +10,8 @@ import tushare as ts
 import group_breakout.fetch as nk
 from pydantic import BaseModel
 import warnings
-
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
 
 # 屏蔽特定类型的弃用警告
 warnings.filterwarnings(
@@ -159,7 +160,7 @@ def _test_is_recent_flat_consolidation():
         )
         for data in ret_day
     ]
-    print(is_recent_flat_consolidation(d))
+    log.info(is_recent_flat_consolidation(d))
 
 
 def new_high(candlesticks: list[Candlestick]) -> int:
@@ -216,7 +217,6 @@ class BreakoutStrategyExecutingResult(BaseModel):
 
 
 def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_date = "20250601", end_date = "20251027"):
-    print(start_date, end_date)
     try:
         # 选取当日突破板块，并选取其成分股中突破的个股
         # end_date = date.today().strftime("%Y%m%d")
@@ -314,7 +314,7 @@ def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_da
                     )
                     for data in ret_day
                 ]
-                print(f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}")
+                log.info(f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}")
                 (a, b,c) = is_recent_flat_consolidation(d)
                 if (
                     a != None #要求6日内不能超过25

@@ -14,6 +14,9 @@ import os
 #     a: float
 #     b: float
 
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
+
 app = FastAPI()
 base_url = "/api/pysdk"
 

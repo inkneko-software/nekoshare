@@ -14,7 +14,8 @@ from group_breakout.selenium import _selenium_get
 from group_breakout.selenium import ChromeDriverSingleton
 import json
 import time
-
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
 
 def stock_zh_a_spot_em() -> pd.DataFrame:
     """
@@ -152,7 +153,7 @@ def fetch_paginated_data(url: str, base_params: Dict, timeout: int = 15):
     while True:
         if driver.driver.page_source.find("成功") != -1:
             break
-        print("请完成滑块验证码")
+        log.info("请完成滑块验证码")
         time.sleep(1)
     # 复制参数以避免修改原始参数
     params = base_params.copy()

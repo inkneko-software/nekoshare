@@ -4,8 +4,10 @@ import json
 from openai import OpenAI
 import os
 import time
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
 
-print(os.environ.get("DEEPSEEK_API_KEY"))
+log.info(os.environ.get("DEEPSEEK_API_KEY"))
 
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com"
@@ -92,8 +94,8 @@ def get_llm_response():
     #     if "choices" in chunk and len(chunk["choices"]) > 0:
     #         delta = chunk["choices"][0]["delta"]
     #         if "content" in delta:
-    #             print(delta["content"], end="", flush=True)
-    print(response.choices[0].message.content)
+    #             log.info(delta["content"], end="", flush=True)
+    log.info(response.choices[0].message.content)
 
 @dataclass
 class StockDayPrice:
@@ -112,8 +114,8 @@ def probe_buy_point(prices: list[StockDayPrice]) -> bool:
     return prices[-1].close > prices[-2].close
 
 if __name__ == "__main__":
-    print(f"消费电子\n{get_industry_price(symbol='消费电子', start_date='20250701', end_date='20251008')}")
+    log.info(f"消费电子\n{get_industry_price(symbol='消费电子', start_date='20250701', end_date='20251008')}")
 
-    # print(f"游戏\n{get_concept_price(symbol='游戏', start_date='20250701', end_date='20251008')}")
+    # log.info(f"游戏\n{get_concept_price(symbol='游戏', start_date='20250701', end_date='20251008')}")
 
     # get_llm_response()
