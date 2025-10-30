@@ -871,11 +871,11 @@ def fetch_rk_from_tdx_and_save():
         
 
 
-def loop():
+def loop(is_run_once=False):
     today_first_run = True
     while True:
         # 每个交易日的9点30后可以开始获取，注意频率以及反爬
-        if (
+        if is_run_once or (
             get_latest_trading_day() == datetime.now().date()
             and (
                 datetime.now().hour > 9
@@ -897,12 +897,15 @@ def loop():
             today_first_run = True
             log.info(f"休市中")
 
+        if is_run_once:
+            break
         time.sleep(60 * 5)
         
 
 
 if __name__ == "__main__":
-    loop()
+    run_once = True if os.getenv("LOOP_MANUAL", "FALSE") == "TRUE" else False
+    loop(run_once)
     # fetch_all_qfq_and_save()
     # loop()
     # print(get_stock_day_price("600268", "20140101"))
