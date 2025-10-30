@@ -495,6 +495,7 @@ def fetch_and_save(marketOnly=False):
     industries = fetch_ths_industries()
 
     for industry in industries:
+        time.sleep(5)
         log.info(f"正在处理行业 {industry.code} - {industry.name} ...")
         # 保存行业信息
         sql = """
