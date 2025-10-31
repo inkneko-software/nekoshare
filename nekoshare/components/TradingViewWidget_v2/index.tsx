@@ -2,7 +2,7 @@
 import StockData from '@/lib/StockData';
 import StockDayPrice from '@/lib/StockDayPrice';
 import { Box, Container, Typography } from '@mui/material';
-import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time } from 'lightweight-charts';
+import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode } from 'lightweight-charts';
 import React, { useEffect, useRef, memo } from 'react';
 import { PreOpenQualitiedResult } from '@/app/api/quantitative/getPreOpenQualified/route';
 import { RectangleDrawingTool } from './plugins/plugins/rectangle-drawing-tool/rectangle-drawing-tool';
@@ -75,7 +75,9 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
                 upColor: 'transparent', downColor: '#0093ad', borderVisible: true, borderUpColor: "#ff0400", borderDownColor: '#0093ad',
                 wickUpColor: '#ff0400', wickDownColor: '#0093ad',
             });
-
+            candlestickSeries.priceScale().applyOptions({
+                mode: PriceScaleMode.Logarithmic
+            })
 
             const formatter = new Intl.DateTimeFormat('en-CA')
             const dayPrice = candlesticks.map((item) => ({
