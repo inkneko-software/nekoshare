@@ -423,6 +423,7 @@ export class RectangleDrawingTool {
     stopDrawing(): void {
         this._drawing = false;
         this._points = [];
+        this._removePreviewRectangle()
         // if (this._toolbarButton) {
         //     this._toolbarButton.style.fill = 'rgb(0, 0, 0)';
         // }
