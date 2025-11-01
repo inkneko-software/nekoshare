@@ -42,7 +42,7 @@ export default function DrawingTool({ chart, series }: DrawingToolProps) {
             <ToolProvider>
                 <RectangleButton chart={chart} series={series} />
                 <HorizontalLineButton chart={chart} />
-                <TrendLineButton chart={chart} />
+                <TrendLineButton chart={chart } series={series} />
             </ToolProvider>
 
         </Box>
