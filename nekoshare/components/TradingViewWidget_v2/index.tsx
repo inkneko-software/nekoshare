@@ -2,12 +2,16 @@
 import StockData from '@/lib/StockData';
 import StockDayPrice from '@/lib/StockDayPrice';
 import { Box, Container, Typography } from '@mui/material';
-import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode } from 'lightweight-charts';
-import React, { useEffect, useRef, memo } from 'react';
+import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode, CrosshairMode, LineStyle, ChartOptions, ChartOptionsBase, LayoutOptions, DeepPartial, LineWidth, IChartApi, ISeriesApi } from 'lightweight-charts';
+import React, { useEffect, useRef, memo, useState } from 'react';
 import { PreOpenQualitiedResult } from '@/app/api/quantitative/getPreOpenQualified/route';
 import { RectangleDrawingTool } from './plugins/plugins/rectangle-drawing-tool/rectangle-drawing-tool';
+import RectangleButton from './RectangleButton';
+import HorizontalLineButton from './HorizontalLineButton';
+import TrendLineButton from './TrendLineButton';
+import DrawingTool from './DrawingTool';
 
-export interface Candlestick{
+export interface Candlestick {
     time: string;
     open: number;
     high: number;
@@ -17,8 +21,8 @@ export interface Candlestick{
 }
 
 interface Point {
-	time: Time;
-	price: number;
+    time: Time;
+    price: number;
 }
 
 export interface RectangleRegion {
@@ -26,7 +30,7 @@ export interface RectangleRegion {
     pointB: Point
 }
 
-export interface TradingViewWidgetProps{
+export interface TradingViewWidgetProps {
     candlesticks: Candlestick[];
     rectangles: RectangleRegion[]
 }
@@ -42,8 +46,8 @@ https://tradingview.github.io/lightweight-charts/plugin-examples/ 趋势线与�
 export default function TradingViewWidget({ candlesticks, rectangles }: TradingViewWidgetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
-
-
+    const [chartApi, setChartApi] = useState<IChartApi | null>(null)
+    const [seriesApi, setSeriesApi] = useState<ISeriesApi<'Candlestick'> | null>(null);
     useEffect(
         () => {
             if (containerRef.current === null || tooltipRef.current === null) {
@@ -56,32 +60,59 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
                 return;
             }
 
-            const chartOptions = {
+            const chartOptions: DeepPartial<ChartOptions> = {
                 width: containerRef.current.clientWidth,
                 height: containerRef.current.clientHeight,
-                 layout: { textColor: 'white', background: { type: ColorType.Solid, color: '#222' } },
+                layout: { textColor: 'white', background: { type: ColorType.Solid, color: '#222' } },
                 grid: {
                     vertLines: { color: '#2c2c2c' },
                     horzLines: { color: '#2c2c2c' },
                 },
+                crosshair: {
+                    // Change mode from default 'magnet' to 'normal'.
+                    // Allows the crosshair to move freely without snapping to datapoints
+                    mode: CrosshairMode.Normal,
+
+                    // Vertical crosshair line (showing Date in Label)
+                    vertLine: {
+                        // width: 8 as LineWidth,
+                        // color: '#C3BCDB44',
+                        // style: LineStyle.Solid,
+                        color: '#25509f',
+                        labelBackgroundColor: '#25509f',
+                    },
+
+                    // Horizontal crosshair line (showing Price in Label)
+                    horzLine: {
+                        color: '#25509f',
+                        labelBackgroundColor: '#25509f',
+                    },
+                },
             };
 
-            
+
             const chartElement = document.createElement('div');
             const chart = createChart(chartElement, chartOptions);
             containerRef.current.appendChild(chartElement);
+            setChartApi(chart);
 
             const candlestickSeries = chart.addSeries(CandlestickSeries, {
-                upColor: 'transparent', downColor: '#0093ad', borderVisible: true, borderUpColor: "#ff0400", borderDownColor: '#0093ad',
-                wickUpColor: '#ff0400', wickDownColor: '#0093ad',
+                upColor: 'transparent',
+                downColor: '#0093ad',
+                borderVisible: true,
+                borderUpColor: "#ff0400",
+                borderDownColor: '#0093ad',
+                wickUpColor: '#ff0400',
+                wickDownColor: '#0093ad',
             });
+            setSeriesApi(candlestickSeries);
             candlestickSeries.priceScale().applyOptions({
                 mode: PriceScaleMode.Logarithmic
             })
 
             const formatter = new Intl.DateTimeFormat('en-CA')
             const dayPrice = candlesticks.map((item) => ({
-                time:item.time,
+                time: item.time,
                 open: item.open,
                 high: item.high,
                 low: item.low,
@@ -135,28 +166,39 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
 
                 tooltip.innerHTML = `日期: ${param.time} 涨跌幅: ${pct}`;
                 tooltip.style.display = 'block';
+                if (param.point) {
+                    tooltip.style.left = param.point.x + 'px';
+                    tooltip.style.top = param.point.y + 'px';
+                }
 
             });
 
 
             let suitableNum = Math.round(containerRef.current.clientWidth / 8)
 
-            chart.timeScale().setVisibleLogicalRange({from: Math.max(0, dayPrice.length - suitableNum), to: dayPrice.length -1});
+            chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, dayPrice.length - suitableNum), to: dayPrice.length - 1 });
 
             containerRef.current.onresize = () => {
                 chart.applyOptions({ width: containerRef.current!.clientWidth, height: containerRef.current!.clientHeight });
             }
 
-            const drawingTool =  new RectangleDrawingTool(chart, candlestickSeries, document.querySelector<HTMLDivElement>("#drawing-tool")!, {showLabels: false})
-            for(let rectangle of rectangles){
-                drawingTool.addNewRectangle(rectangle.pointA, rectangle.pointB)
+            const drawingToolElement = document.querySelector<HTMLDivElement>("#drawing-tool")
+            if (drawingToolElement !== null) {
+                const drawingTool = new RectangleDrawingTool(chart, candlestickSeries, document.querySelector<HTMLDivElement>("#drawing-tool")!, { showLabels: false })
+                for (let rectangle of rectangles) {
+                    drawingTool.addNewRectangle(rectangle.pointA, rectangle.pointB)
+                }
             }
+
+            console.log(chart, candlestickSeries)
+
             return () => {
                 chart.remove();
                 if (containerRef.current) {
                     containerRef.current.removeChild(chartElement);
                     containerRef.current.onresize = null;
                 }
+
             };
         },
         [containerRef.current, candlesticks]
@@ -164,10 +206,13 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
     );
 
     return (
-        <Box sx={{ position: 'relative', height: '100%', width: '100%'  }}>
-            <div id="drawing-tool" style={{display: 'none'}} />
+        <Box sx={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+            {
+                chartApi !== null && seriesApi !== null &&  <DrawingTool chart={chartApi} series={seriesApi}/>
+            }
+            <Box id='drawing-tool' sx={{display: 'none'}} />
             <Typography ref={tooltipRef} variant='caption' sx={{ display: 'none', marginBottom: 1, marginTop: 1, position: 'absolute', left: 0, top: 0, zIndex: 100000 }} />
-            <Box ref={containerRef} sx={{ height: '100%', width: '100%' }} >
+            <Box ref={containerRef} sx={{ flexGrow: 1, width: '100%' }} >
             </Box>
         </Box>
 

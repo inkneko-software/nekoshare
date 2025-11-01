@@ -381,7 +381,7 @@ export class RectangleDrawingTool {
 		this._chart = chart;
 		this._series = series;
 		this._drawingsToolbarContainer = drawingsToolbarContainer;
-		this._addToolbarButton();
+		//this._addToolbarButton();
 		this._defaultOptions = options;
 		this._rectangles = [];
 		this._chart.subscribeClick(this._clickHandler);
