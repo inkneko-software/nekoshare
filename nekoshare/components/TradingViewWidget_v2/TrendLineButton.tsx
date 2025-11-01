@@ -640,7 +640,7 @@ export default function TrendLineButton({ chart, series }: TrendLineButtonProps)
             setActivedTool(null)
         }
 
-        const trend = new TrendLineDrawingTool(chart, series, onDrawingComplete, {});
+        const trend = new TrendLineDrawingTool(chart, series, onDrawingComplete, {showLabels: false});
         trendLineDrawingTool.current = trend;
     }, [chart, series])
 
