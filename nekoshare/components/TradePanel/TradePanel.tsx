@@ -32,7 +32,7 @@ export default function TradePanel() {
     };
 
     return (
-        <Paper sx={[{ overflow: 'hidden', zIndex: '65535', borderRadius: '8px', width: '128px', height: '32px', position: 'absolute', bottom: 16, right: 16, transition: 'all 0.3s ease-in-out' }, expand && { width: '20%', height: '50%', background: '#303030' }]}>
+        <Paper sx={[{ overflow: 'hidden', display:'flex', flexDirection: 'column', zIndex: '65535', borderRadius: '8px', width: '128px', height: '32px', position: 'absolute', bottom: 16, right: 16, transition: 'all 0.3s ease-in-out' }, expand && { width: '20%', height: '50%', background: '#303030' }]}>
             {
                 !expand && <Button sx={{ backgroundColor: '#25509f', color: 'white', width: '128px', height: '32px', position: 'relative', bottom: 0, right: 0 }} onClick={() => setExpand(true)}>
                     <HistoryOutlinedIcon sx={{ mr: 1 }} />
@@ -44,7 +44,7 @@ export default function TradePanel() {
                     <Box sx={{ width: '100%' }}>
                         <Box sx={{ display: 'flex', backgroundColor: '#222222', color: 'white' }}>
                             <Typography variant="h6" component="div" sx={{ flexGrow: 1, margin: ' 8px 8px' }}>
-                                模拟交易 - 2025-01-01 收盘前
+                                模拟交易 2025-01-01 收盘前
                             </Typography>
                             <IconButton
                                 size="small"
