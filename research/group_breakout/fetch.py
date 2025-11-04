@@ -808,7 +808,8 @@ def fetch_rk_from_tdx_and_save():
     for i in range(0, len(stocks.keys()), 50):
         datas = client.quotes(symbol=list(stocks.keys())[i:i+50])
         for data in datas.itertuples():
-            if  data.last_close == 0:
+            # 停牌
+            if  data.last_close == 0 or data.price == 0:
                 # print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {data} 数据获取不完整")
                 i += 1
                 continue
