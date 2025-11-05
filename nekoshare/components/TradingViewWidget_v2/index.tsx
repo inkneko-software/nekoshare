@@ -166,11 +166,6 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
 
                 tooltip.innerHTML = `日期: ${param.time} 涨跌幅: ${pct}`;
                 tooltip.style.display = 'block';
-                if (param.point) {
-                    tooltip.style.left = param.point.x + 'px';
-                    tooltip.style.top = param.point.y + 'px';
-                }
-
             });
 
 
@@ -211,7 +206,7 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
                 chartApi !== null && seriesApi !== null &&  <DrawingTool chart={chartApi} series={seriesApi}/>
             }
             <Box id='drawing-tool' sx={{display: 'none'}} />
-            <Typography ref={tooltipRef} variant='caption' sx={{ display: 'none', marginBottom: 1, marginTop: 1, position: 'absolute', left: 0, top: 0, zIndex: 100000 }} />
+            <Typography ref={tooltipRef} variant='caption' sx={{ display: 'none', margin: '8px 8px', position: 'absolute', right: 0, top: 0, zIndex: 100000 }} />
             <Box ref={containerRef} sx={{ flexGrow: 1, width: '100%' }} >
             </Box>
         </Box>
