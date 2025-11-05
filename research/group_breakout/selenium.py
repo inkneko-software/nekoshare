@@ -5,6 +5,8 @@ from selenium.webdriver.common.by import By
 import time
 from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
 
 class ChromeDriverSingleton:
     _instance = None
@@ -54,17 +56,25 @@ class ChromeDriverSingleton:
         self.driver = driver
 
     def get(self, url: str, raw_js=False):
+        if self.driver == None:
+            self.start()
         self.driver.get(url)
         source = self.driver.page_source
         log.debug(url, "\n", source)
         if "Nginx forbidden" in source:
             log.info(source)
             raise Exception("Nginx forbidden")
-        time.sleep(1)
+        # time.sleep(1)
         if raw_js:
             source = self.driver.find_element(By.TAG_NAME, "pre").text
         return source
 
+    def stop(self):
+        self.driver.quit()
+        self.driver = None
+
+    def start(self):
+        self.__init_broswer()
 def _selenium_get(url: str, raw_js=False) -> str:
     return ChromeDriverSingleton().get(url, raw_js=raw_js)
 
