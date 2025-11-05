@@ -6,9 +6,12 @@ from datetime import datetime, timedelta, date
 import time
 import mysql.connector
 import sys
+import os
 
-day_range = 2900
-
+day_range = int(os.environ.get("DAY_RANGE", 3900))
+mysql_host = os.environ.get("DB_HOST")
+mysql_user = os.environ.get("DB_USER")
+mysql_passwd = os.environ.get("DB_PASSWORD")
 
 def read_day_file(filepath):
     """
@@ -320,9 +323,9 @@ def load_stock_info_to_mysql():
     data = read_stock_info_csv()
     # 保存至mysql
     conn = mysql.connector.connect(
-        host="10.200.0.20",
-        user="root",
-        password="test",
+        host=mysql_host,
+        user=mysql_user,
+        password=mysql_passwd,
         database="nekoshare",
     )
     cursor = conn.cursor()
@@ -385,9 +388,9 @@ def load_stock_day_price_to_mysql():
 
     # 保存至mysql
     conn = mysql.connector.connect(
-        host="10.200.0.20",
-        user="root",
-        password="test",
+        host=mysql_host,
+        user=mysql_user,
+        password=mysql_passwd,
         database="nekoshare",
     )
 
@@ -437,9 +440,9 @@ def load_pre_open_data_to_mysql():
     data = read_stock_info_csv()
     # 保存至mysql
     conn = mysql.connector.connect(
-        host="10.200.0.20",
-        user="root",
-        password="test",
+        host=mysql_host,
+        user=mysql_user,
+        password=mysql_passwd,
         database="nekoshare",
     )
     cursor = conn.cursor()
