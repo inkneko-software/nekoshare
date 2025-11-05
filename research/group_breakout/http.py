@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Optional
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, HTTPException, WebSocket
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 import group_breakout.fetch as nk
@@ -20,6 +21,18 @@ log = LoggerFactory.get_logger(__name__)
 app = FastAPI()
 base_url = "/api/pysdk"
 
+@app.get(base_url + "/stock/getStockInfo")
+def get_stock_info(code: str):
+    """
+    获取指定股票的股票信息
+
+    :param code: 股票代码
+    :return: 
+    """
+    stock = nk.get_stock_data(code)
+    if stock == None:
+        return JSONResponse(status_code=404, content={"message": "代码不存在"})
+    return {"data": stock}
 
 @app.get(base_url + "/stock/getStockDayPrice")
 def add(code: str, start_date: str = "20140101", end_date: str = None, start_delta: int = None):
@@ -61,10 +74,17 @@ def get_industry_day_price(code: str, start_date: str = "20140101", end_date: st
     prices = nk.get_ths_industry_day_price(code, start_date, end_date)
     return {"data": prices}
 
-@app.get(base_url + "/ths/fetch_industry_market")
-def fetch_industry_market():
-    nk.fetch_and_save(True)
-    return {"code": 200, "msg": "ok"}
+@app.get(base_url + "/ths/getIndustry")
+def fetch_industry_market(code: str):
+    """
+    获取指定行业最新行情
+    """
+    thsIndustryDayPrice = nk.get_ths_industry_day_price(code, latest=True)
+    if len(thsIndustryDayPrice) == 0:
+        return JSONResponse(status_code=404, content={"message": "行业不存在"})
+    return {"data": thsIndustryDayPrice[0]}
+
+
 
 
 class TimeRange(BaseModel):
