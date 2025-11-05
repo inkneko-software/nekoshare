@@ -537,7 +537,6 @@ def fetch_and_save(marketOnly=False):
             )
             for price in prices
         ]
-        log.info(records)
         pool.queryMany(sql, records)
 
         # 如果只更新市场行情，则跳过成分股获取与保存
@@ -571,6 +570,11 @@ def get_ths_industry() -> list[THSIndustry]:
 
 
 def get_ths_industry_market() -> list[THSIndustryMarket]:
+    """
+    获取同花顺所有行业板块最新行情
+
+    return list[THSIndustryMarket]
+    """
     pool = MySQLConnectionPool()
     industry_market = []
     sql = "SELECT code, name FROM ths_industry"
@@ -592,15 +596,26 @@ def get_ths_industry_market() -> list[THSIndustryMarket]:
 
 
 def get_ths_industry_day_price(
-    code: str, start_date="19190810", end_date="20990101"
+    code: str, start_date="19190810", end_date="20990101", latest=False
 ) -> list[THSIndustryDayPrice]:
+    """
+    获取同花顺行业日线数据
+    :param code: 行业代码
+    :param start_date: 起始日期，格式为 'YYYYMMDD'
+    :param end_date: 结束日期，格式为 'YYYYMMDD'
+    :param latest: 是否只返回最新数据
+    """
     pool = MySQLConnectionPool()
     sql = """
     SELECT industry_code, industry_name, trade_date, open, close, high, low, pre_close, volume, created_at
     FROM ths_industry_day_price
     WHERE industry_code = %s AND trade_date BETWEEN %s AND %s
-    ORDER BY trade_date ASC
     """
+    if latest:
+        sql += "ORDER BY trade_date DESC LIMIT 1"
+    else:
+        sql += "ORDER BY trade_date ASC"
+
     vals = (code, start_date, end_date)
     results = pool.query(sql, vals)
     day_prices = [
