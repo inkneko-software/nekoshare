@@ -50,7 +50,7 @@ export default function Home() {
     useEffect(() => {
         async function fetchCandlesticks() {
             try {
-                if (selectedIndustry === -1){
+                if (selectedIndustry === -1) {
                     return;
                 }
                 //如果没选中股票，则查询板块K线
@@ -90,8 +90,13 @@ export default function Home() {
     }, [selectedIndustry, selectedStock]);
 
     const handleIndustrySelectedChanged = (index: number) => {
+        if (index === -1) {
+            index = selectedIndustry
+            return;
+        }
         setSelectedIndustry(index);
         async function fetchIndustryStocks() {
+
             try {
                 let response = await fetch('/api/ths/getIndustryStocks?ths_industry_code=' + industries[index].code);
                 if (!response.ok) {
@@ -132,30 +137,50 @@ export default function Home() {
             </Box>
             <Box sx={{ width: '60%', display: 'flex', flexDirection: 'column' }}>
                 <Paper sx={{ height: '20%', borderBottom: '1px black solid' }} square>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {
+                        (selectedIndustry !== -1 || selectedStock !== -1) && (
+                            <>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
 
-                        <Typography variant='h5' sx={{ margin: 1 }}>
-                            {'农业银行'}
-                        </Typography>
-                        <Typography variant='h6' sx={{ margin: 1 }}>
-                            601288
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column','.MuiTypography-root': {margin: 1, width: '96px'} }}>
-                        <Box sx={{display: 'flex', }}>
-                            <Typography>今开 5.00</Typography>
-                            <Typography>昨收 5.00</Typography>
-                            <Typography>最高 5.00</Typography>
-                            <Typography>最低 5.00</Typography>
-                        </Box>
-                        <Box sx={{display: 'flex'}}>
-                            <Typography>流通股 142.3</Typography>
-                            <Typography>流通市值 300</Typography>
-                            <Typography>市盈率 25</Typography>
-                            <Typography>行业 银行</Typography>
-                            <Typography>地区 北京</Typography>
-                        </Box>
-                    </Box>
+                                    <Typography variant='h5' sx={{ margin: 1 }}>
+                                        {
+                                            selectedStock !== -1 ? industryStocks[selectedStock].stock_name : selectedIndustry !== -1 ? industries[selectedIndustry].name : ''
+                                        }
+                                    </Typography>
+                                    <Typography variant='h6' sx={{ margin: 1 }}>
+                                        {
+                                            selectedStock !== -1 ? industryStocks[selectedStock].stock_code : selectedIndustry !== -1 ? industries[selectedIndustry].code : ''
+                                        }
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', '.MuiTypography-root': { margin: 1, minWidth: '96px' } }}>
+                                    {
+                                        selectedStock !== -1 && <Box sx={{ display: 'flex', }}>
+                                            <Typography variant='h6' sx={{ color: industryStocks[selectedStock].percent_change > 0 ? '#ec3a37' : '#0093ad' }}>{industryStocks[selectedStock].price.toFixed(2)}</Typography>
+                                            <Typography sx={{ color: industryStocks[selectedStock].open - industryStocks[selectedStock].pre_close > 0 ? '#ec3a37' : '#0093ad' }}>今开 {industryStocks[selectedStock].open.toFixed(2)}</Typography>
+                                            <Typography>昨收 {industryStocks[selectedStock].pre_close.toFixed(2)}</Typography>
+                                            <Typography sx={{ color: industryStocks[selectedStock].high - industryStocks[selectedStock].pre_close > 0 ? '#ec3a37' : '#0093ad' }}>最高 {industryStocks[selectedStock].high.toFixed(2)}</Typography>
+                                            <Typography sx={{ color: industryStocks[selectedStock].low - industryStocks[selectedStock].pre_close > 0 ? '#ec3a37' : '#0093ad' }}>最低 {industryStocks[selectedStock].low.toFixed(2)}</Typography>
+                                        </Box>
+                                    }
+                                    {
+                                        selectedStock !== -1 && <Box sx={{ display: 'flex' }}>
+                                            <Typography sx={{ width: 'fit-content !importent', color: industryStocks[selectedStock].percent_change > 0 ? '#ec3a37' : '#0093ad' }}>{`${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : '-'}${(industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close).toFixed(2)} ${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : '-'}${industryStocks[selectedStock].percent_change.toFixed(2)}%`}</Typography>
+                                            <Typography>流通股 {industryStocks[selectedStock].float_share}</Typography>
+                                            <Typography>流通市值 {industryStocks[selectedStock].float_cap}亿</Typography>
+                                            <Typography>市盈率 {industryStocks[selectedStock].pe_ratio.toFixed(2)}</Typography>
+                                            <Typography>行业 {industryStocks[selectedStock].industry}</Typography>
+                                            <Typography>地区 {industryStocks[selectedStock].area}</Typography>
+                                        </Box>
+                                    }
+                                    {
+                                        selectedStock === -1 && selectedIndustry !== -1 && <Typography variant='h6' sx={{ color: industries[selectedIndustry].change_pct > 0 ? '#ec3a37' : '#0093ad' }}>{industries[selectedIndustry].change_pct > 0 ? '+' : '-'}{industries[selectedIndustry].change_pct.toFixed(2) + '%'}</Typography>
+                                    }
+                                </Box>
+                            </>
+                        )
+                    }
+
                 </Paper>
                 <Paper sx={{ height: '60%', borderBottom: '1px black solid' }} square>
                     <TradingViewWidget candlesticks={candlesticks} rectangles={[]} />
