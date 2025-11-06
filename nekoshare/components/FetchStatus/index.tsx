@@ -44,11 +44,11 @@ export default function FetchStatus() {
     return (
         <>
             {
-                thsIndustryQuoteLog !== null && <Typography variant="body1" sx={{ marginRight: 1 }} >板块：{dayjs(thsIndustryQuoteLog.created_at).format('YYYY-MM-DD HH:mm')}</Typography>
+                thsIndustryQuoteLog !== null && <Typography variant="body1" sx={{ marginRight: 1 }} >板块：{dayjs(thsIndustryQuoteLog.created_at).format('YYYY-MM-DD HH:mm')}{thsIndustryQuoteLog.job_status ==='failed'? '出现错误' : ''}</Typography>
 
             }
             {
-                tdxStocksQuoteLog !== null && <Typography variant="body1" sx={{ marginRight: 1 }} >日线行情：{dayjs(tdxStocksQuoteLog.created_at).format('YYYY-MM-DD HH:mm')}</Typography>
+                tdxStocksQuoteLog !== null && <Typography variant="body1" sx={{ marginRight: 1 }} >日线行情：{dayjs(tdxStocksQuoteLog.created_at).format('YYYY-MM-DD HH:mm')}{tdxStocksQuoteLog.job_status ==='failed'? '出现错误' : ''}</Typography>
 
             }
 
