@@ -165,7 +165,7 @@ export default function Home() {
                                     }
                                     {
                                         selectedStock !== -1 && <Box sx={{ display: 'flex' }}>
-                                            <Typography sx={{ width: 'fit-content !importent', color: industryStocks[selectedStock].percent_change > 0 ? '#ec3a37' : '#0093ad' }}>{`${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : '-'}${(industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close).toFixed(2)} ${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : '-'}${industryStocks[selectedStock].percent_change.toFixed(2)}%`}</Typography>
+                                            <Typography sx={{ width: 'fit-content !importent', color: industryStocks[selectedStock].percent_change > 0 ? '#ec3a37' : '#0093ad' }}>{`${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : ''}${(industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close).toFixed(2)} ${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : ''}${industryStocks[selectedStock].percent_change.toFixed(2)}%`}</Typography>
                                             <Typography>流通股 {industryStocks[selectedStock].float_share}</Typography>
                                             <Typography>流通市值 {industryStocks[selectedStock].float_cap}亿</Typography>
                                             <Typography>市盈率 {industryStocks[selectedStock].pe_ratio.toFixed(2)}</Typography>
@@ -174,7 +174,7 @@ export default function Home() {
                                         </Box>
                                     }
                                     {
-                                        selectedStock === -1 && selectedIndustry !== -1 && <Typography variant='h6' sx={{ color: industries[selectedIndustry].change_pct > 0 ? '#ec3a37' : '#0093ad' }}>{industries[selectedIndustry].change_pct > 0 ? '+' : '-'}{industries[selectedIndustry].change_pct.toFixed(2) + '%'}</Typography>
+                                        selectedStock === -1 && selectedIndustry !== -1 && <Typography variant='h6' sx={{ color: industries[selectedIndustry].change_pct > 0 ? '#ec3a37' : '#0093ad' }}>{industries[selectedIndustry].change_pct > 0 ? '+' : ''}{industries[selectedIndustry].change_pct.toFixed(2) + '%'}</Typography>
                                     }
                                 </Box>
                             </>
