@@ -95,6 +95,7 @@ export default function Home() {
             return;
         }
         setSelectedIndustry(index);
+        setSelectedStock(-1);
         async function fetchIndustryStocks() {
 
             try {
