@@ -21,6 +21,6 @@ export default function Timer() {
     }
 
     return (
-        <Typography variant="body1" >{date.toLocaleDateString()} {date.toLocaleTimeString()}</Typography>
+        <Typography variant="body1" > 当前时间 {date.toLocaleDateString()} {date.toLocaleTimeString()}</Typography>
     );
 }

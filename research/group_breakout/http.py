@@ -84,6 +84,18 @@ def fetch_industry_market(code: str):
         return JSONResponse(status_code=404, content={"message": "行业不存在"})
     return {"data": thsIndustryDayPrice[0]}
 
+@app.get(base_url + "/fetch/getFetchLog")
+def get_fetch_log(job_type: str, count: int = None):
+    """
+    获取爬虫状态信息
+
+    """
+    if job_type != "ths_industry_quote" and job_type != "tdx_stocks_quote":
+        raise HTTPException(status_code=400, detail="无效的爬虫任务类型")
+    
+    return {"data": nk.get_fetch_log(job_type, count)}
+    
+    
 
 
 

@@ -6,6 +6,7 @@
 
 import json
 import math
+from typing import Literal
 import tushare as ts
 
 # import group_breakout.akshare as ak
@@ -25,6 +26,7 @@ from entity.THSIndustryStock import THSIndustryStock
 from entity.StockData import StockData
 from entity.THSIndustryMarket import THSIndustryMarket
 from entity.StockDayPrice import StockDayPrice
+from entity.FetchLog import FetchLog
 from group_breakout.trade_day import get_latest_trading_day
 from group_breakout.selenium import _selenium_get
 
@@ -36,6 +38,7 @@ import warnings
 
 from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
+from enum import Enum
 
 # 屏蔽特定类型的弃用警告
 warnings.filterwarnings(
@@ -495,7 +498,7 @@ def fetch_and_save(marketOnly=False):
     industries = fetch_ths_industries()
 
     for industry in industries:
-        time.sleep(5)
+        # time.sleep(5)
         log.info(f"正在处理行业 {industry.code} - {industry.name} ...")
         # 保存行业信息
         sql = """
@@ -886,6 +889,52 @@ def fetch_rk_from_tdx_and_save():
     log.info(f"数据已存入数据库")
         
 
+def save_fetch_log(job_type: Literal['ths_industry_quote', 'tdx_stocks_quote'], job_status: Literal['success', 'failed'], msg: str):
+    """
+    保存数据获取日志
+    :param job_type: 任务类型
+    :param job_status: 任务状态
+    :param msg: 日志信息
+    """
+    sql = "INSERT INTO fetch_log(job_type, job_status, msg) VALUES (%s, %s, %s)"
+    vals = (job_type, job_status, msg)
+    pool = MySQLConnectionPool()
+    pool.query(sql, vals)
+
+def get_fetch_log(job_type: Literal['ths_industry_quote', 'tdx_stocks_quote'], count: None) -> list[FetchLog]:
+    """
+    获取数据获取日志
+    :param job_type: 任务类型
+    :param count: 返回数量，为None时返回所有，大于0时返回最近的数量
+    :return: 数据获取日志
+    """
+    pool = MySQLConnectionPool()
+    sql = """
+    SELECT id, job_type, job_status, msg, created_at
+    FROM fetch_log
+    WHERE job_type = %s
+    ORDER BY created_at DESC
+    """
+    vals = [job_type,]
+    if count != None and count > 0:
+        sql += "LIMIT %s" if count else ""
+        vals.append(count)
+
+
+    results = pool.query(sql, vals)
+    return [
+        (
+            FetchLog(
+                id=result[0],
+                job_type=result[1],
+                job_status=result[2],
+                msg=result[3],
+                created_at=result[4],
+            )
+        )
+        for result in results
+    ][:count]
+
 
 def loop(is_run_once=False):
     today_first_run = True
@@ -907,8 +956,20 @@ def loop(is_run_once=False):
                 except requests.exceptions.ConnectionError:
                     log.info(f"获取东方财富实时数据失败")
 
-            fetch_rk_from_tdx_and_save()
-            fetch_and_save(marketOnly=True)
+            try:
+                fetch_rk_from_tdx_and_save()
+                save_fetch_log("tdx_stocks_quote", "success", "获取通达信实时数据成功")
+            except Exception as e:
+                log.info(f"获取通达信实时数据失败: {e}")
+                save_fetch_log("tdx_stocks_quote", "failed", f"获取通达信实时数据失败: {e}")
+            
+            try:
+                fetch_and_save(marketOnly=True)
+                save_fetch_log("ths_industry_quote", "success", "获取同花顺行业数据成功")
+            except Exception as e:
+                log.info(f"获取同花顺行业数据失败: {e}")
+                save_fetch_log("ths_industry_quote", "failed", f"获取同花顺行业数据失败: {e}")
+
         else:
             today_first_run = True
             log.info(f"休市中")
