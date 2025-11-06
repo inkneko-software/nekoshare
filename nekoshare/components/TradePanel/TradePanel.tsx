@@ -15,11 +15,19 @@ import FullscreenExitOutlinedIcon from '@mui/icons-material/FullscreenExitOutlin
 import FullscreenOutlinedIcon from '@mui/icons-material/FullscreenOutlined';
 import MainNavigationDrawer from "@/components/Drawer/MainNavigationDrawer";
 import React from "react";
+import { useSimulateTradingContext } from "@/lib/context/SimulateTradingContext";
 
 export default function TradePanel() {
     const theme = useTheme();
     const [expand, setExpand] = React.useState(false);
     const [tabIndex, setTabIndex] = React.useState(2);
+    const {account, setAccount, isEnabled, startTradeDate, currentTradeDate, buy, sell} = useSimulateTradingContext()
+
+    const [code, setCode] = React.useState('');
+    const [name, setName] = React.useState('');
+    const [isStockNotFound, setIsStockNotFound] = React.useState(true);
+    const [price, setPrice] = React.useState(0);
+    const [quantity, setQuantity] = React.useState(0);
     function a11yProps(index: number) {
         return {
             id: `simple-tab-${index}`,
@@ -31,20 +39,54 @@ export default function TradePanel() {
         setTabIndex(newValue);
     };
 
+    const handleBuy = ()=>{
+        buy(code, name, price, quantity)
+    }
+
+    const handleCodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+
+        async function getStockInfo() {
+            const res = await fetch(`/api/stock/getStockBasics?stock_code=${event.target.value}`);
+            if (!res.ok) {
+                return;
+            }
+            setIsStockNotFound(false); 
+            const data = await res.json();
+            const stockInfo = data;
+            const stockPrice = stockInfo.price;
+            setPrice(stockPrice);
+            setName(stockInfo.stock_name);
+        }
+
+        setCode(event.target.value);
+        if (event.target.value.length === 6) {
+            getStockInfo()
+        }
+    };
+
+    const handleQuantityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.value === '') {
+            setQuantity(0);
+            return;
+        }
+        setQuantity(parseInt(event.target.value));
+    };
+
+
     return (
-        <Paper sx={[{ overflow: 'hidden', display:'flex', flexDirection: 'column', zIndex: '65535', borderRadius: '8px', width: '128px', height: '32px', position: 'absolute', bottom: 16, right: 16, transition: 'all 0.3s ease-in-out' }, expand && { width: '20%', height: '50%', background: '#303030' }]}>
+        <Paper sx={[{ display: isEnabled ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', zIndex: '65535', borderRadius: '8px', width: '128px', height: '32px', position: 'absolute', bottom: 16, right: 16, transition: '0.3s ease-in-out', transitionProperty: 'width, height' }, expand && { width: '20%', height: '50%', background: '#303030', border: '1px white solid' }]}>
             {
                 !expand && <Button sx={{ backgroundColor: '#25509f', color: 'white', width: '128px', height: '32px', position: 'relative', bottom: 0, right: 0 }} onClick={() => setExpand(true)}>
                     <HistoryOutlinedIcon sx={{ mr: 1 }} />
-                    2025-01-01
+                    {currentTradeDate}
                 </Button>
             }
             {
                 expand && (
                     <Box sx={{ width: '100%' }}>
                         <Box sx={{ display: 'flex', backgroundColor: '#222222', color: 'white' }}>
-                            <Typography variant="h6" component="div" sx={{ flexGrow: 1, margin: ' 8px 8px' }}>
-                                模拟交易 2025-01-01 收盘前
+                            <Typography variant="body2" component="div" sx={{ flexGrow: 1, margin: ' 8px 8px' }}>
+                                {`模拟交易 ${currentTradeDate} 收盘前`}
                             </Typography>
                             <IconButton
                                 size="small"
@@ -68,15 +110,16 @@ export default function TradePanel() {
                             tabIndex === 0 && (
                                 <Box sx={{ display: 'flex', margin: ' 8px 8px' }}>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', width: '50%' }}>
-                                        <TextField size='small' label='股票代码' defaultValue="600286" sx={{ margin: '8px 8px' }} />
-                                        <TextField size='small' label='买入数量' defaultValue="200" sx={{ margin: '8px 8px' }} />
-                                        <TextField size='small' label='买入价格' defaultValue="10.21" disabled sx={{ margin: '8px 8px' }} />
+                                        <TextField size='small' label='股票代码' value={code} onChange={handleCodeChange} sx={{ margin: '8px 8px' }} error helperText="请输入正确代码" />
+                                        <TextField size='small' label='买入数量' value={quantity} onChange={handleQuantityChange} sx={{ margin: '8px 8px'  }} error helperText="请输入正确数量" />
+                                        <TextField size='small' label='买入价格' value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} disabled sx={{ margin: '8px 8px' }} />
                                     </Box>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', width: '50%' }}>
-                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>可用 68286.00</Typography>
-                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>可买 200</Typography>
-                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>买入市值 2023.32</Typography>
-                                        <Button variant="contained" sx={{ margin: '8px 8px', marginTop: 'auto', 'backgroundColor': '#ff2e2e', color: 'white' }} size="small">买入</Button>
+                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`可用 ${account.available}`}</Typography>
+                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`可买 ${account.available / price}`}</Typography>
+                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`买入市值 ${price * quantity}`}</Typography>
+                                        <Button variant="contained" sx={{ margin: '8px 8px', marginTop: 'auto', 'backgroundColor': '#ff2e2e', color: 'white' }} size="small"
+                                         onClick={handleBuy}>买入</Button>
                                     </Box>
 
                                 </Box>
@@ -157,23 +200,23 @@ export default function TradePanel() {
                             </TableHead>
                             <TableBody> 
                                     {
-                                        [1,3,3,1,2].map((item, index) => (
+                                        account.positions.map((item, index) => (
                                             <TableRow key={index}>
                                                 <TableCell>
-                                                    <Typography variant='body2'>国电南自</Typography>
-                                                    <Typography variant='body2'>2012.26</Typography>
+                                                    <Typography variant='body2'>{item.name}</Typography>
+                                                    <Typography variant='body2'>{item.equity}</Typography>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant='body2'>+500.00</Typography>
-                                                    <Typography variant='body2'>+0.26%</Typography>
+                                                    <Typography variant='body2'>{item.profit}</Typography>
+                                                    <Typography variant='body2'>{item.profitRatio}</Typography>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant='body2'>200</Typography>
-                                                    <Typography variant='body2'>0</Typography>
+                                                    <Typography variant='body2'>{item.quantity}</Typography>
+                                                    <Typography variant='body2'>{item.avilableQuantity}</Typography>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant='body2'>10.06</Typography>
-                                                    <Typography variant='body2'>9.26</Typography>
+                                                    <Typography variant='body2'>{item.cost}</Typography>
+                                                    <Typography variant='body2'>{item.price}</Typography>
                                                 </TableCell>
                                             </TableRow>
                                         ))  
