@@ -37,6 +37,7 @@ from mootdx.quotes import Quotes
 import warnings
 
 from utils.log import LoggerFactory
+
 log = LoggerFactory.get_logger(__name__)
 from enum import Enum
 
@@ -100,6 +101,8 @@ class MySQLConnectionPool:
 
     def conn(self):
         return self.pool.get_connection()
+
+
 def fetch_ths_industries() -> list[THSIndustry]:
     """
     获取同花顺所有行业列表与代码
@@ -279,7 +282,9 @@ def _stock_board_industry_index_ths(
     return big_df
 
 
-def fetch_ths_industry_day_price(industry: THSIndustry) -> list[THSIndustryDayPrice]:
+def fetch_ths_industry_day_price(
+    industry: THSIndustry, start_date="20250101"
+) -> list[THSIndustryDayPrice]:
     """
     获取同花顺行业所有日线数据
     """
@@ -287,7 +292,7 @@ def fetch_ths_industry_day_price(industry: THSIndustry) -> list[THSIndustryDayPr
     i = 0
     ret_day = _stock_board_industry_index_ths(
         symbol_code=industry.code,
-        start_date="20250101",
+        start_date=start_date,
     )
     for data in ret_day.itertuples():
         day_price = THSIndustryDayPrice(
@@ -490,7 +495,7 @@ def fetch_today_qfq_and_save():
     pool.queryMany(sql, records)
 
 
-def fetch_and_save(marketOnly=False):
+def fetch_and_save(marketOnly=False, start_date="20250101"):
     pool = MySQLConnectionPool()
     # sql语句参考data/sql/nekoshare.sql 中的表结构设计
 
@@ -512,7 +517,7 @@ def fetch_and_save(marketOnly=False):
 
         log.info(f"获取并保存行业日线数据...")
         # 获取行业日线数据
-        prices = fetch_ths_industry_day_price(industry)
+        prices = fetch_ths_industry_day_price(industry, start_date)
         # 保存行业日线数据
         sql = """
         INSERT INTO ths_industry_day_price (industry_code, industry_name, trade_date, open, close, high, low, pre_close, volume)
@@ -783,7 +788,7 @@ def get_stock_data(code: str) -> StockData:
     results = pool.query(sql, vals)
     if len(results) == 0:
         return None
-    
+
     result = results[0]
     stock_data = StockData(
         stock_code=result[0],
@@ -803,6 +808,7 @@ def get_stock_data(code: str) -> StockData:
     )
     return stock_data
 
+
 def fetch_rk_from_tdx_and_save():
     """
     从通达信获取实时日K数据
@@ -821,13 +827,13 @@ def fetch_rk_from_tdx_and_save():
         code = row[0]
         name = row[1]
         if code.startswith(("6", "0", "3")):
-            stocks[code]=name
-        
+            stocks[code] = name
+
     for i in range(0, len(stocks.keys()), 50):
-        datas = client.quotes(symbol=list(stocks.keys())[i:i+50])
+        datas = client.quotes(symbol=list(stocks.keys())[i : i + 50])
         for data in datas.itertuples():
             # 停牌
-            if  data.last_close == 0 or data.price == 0 or data.open == 0:
+            if data.last_close == 0 or data.price == 0 or data.open == 0:
                 # print(f"{time.strftime('%Y-%m-%d %H:%M')} {code} {name} {data} 数据获取不完整")
                 i += 1
                 continue
@@ -859,8 +865,8 @@ def fetch_rk_from_tdx_and_save():
                 float(data.last_close),
                 float(data.vol * 100),
                 float(data.amount),
-                float(round((data.price - data.last_close) /  data.last_close * 100, 2)),
-                bool(data.price == round(data.last_close * 1.1, 2))
+                float(round((data.price - data.last_close) / data.last_close * 100, 2)),
+                bool(data.price == round(data.last_close * 1.1, 2)),
             )
             pool.query(sql, vals)
 
@@ -879,7 +885,7 @@ def fetch_rk_from_tdx_and_save():
                 float(data.open),
                 float(data.high),
                 float(data.low),
-                float(round((data.price - data.last_close) /  data.last_close * 100, 2)),
+                float(round((data.price - data.last_close) / data.last_close * 100, 2)),
                 float(data.last_close),
                 code,
             )
@@ -887,9 +893,13 @@ def fetch_rk_from_tdx_and_save():
             i += 1
             log.info(f"{code} {name} {i}/{len(stocks.keys())}")
     log.info(f"数据已存入数据库")
-        
 
-def save_fetch_log(job_type: Literal['ths_industry_quote', 'tdx_stocks_quote'], job_status: Literal['success', 'failed'], msg: str):
+
+def save_fetch_log(
+    job_type: Literal["ths_industry_quote", "tdx_stocks_quote"],
+    job_status: Literal["success", "failed"],
+    msg: str,
+):
     """
     保存数据获取日志
     :param job_type: 任务类型
@@ -901,7 +911,10 @@ def save_fetch_log(job_type: Literal['ths_industry_quote', 'tdx_stocks_quote'], 
     pool = MySQLConnectionPool()
     pool.query(sql, vals)
 
-def get_fetch_log(job_type: Literal['ths_industry_quote', 'tdx_stocks_quote'], count: None) -> list[FetchLog]:
+
+def get_fetch_log(
+    job_type: Literal["ths_industry_quote", "tdx_stocks_quote"], count: None
+) -> list[FetchLog]:
     """
     获取数据获取日志
     :param job_type: 任务类型
@@ -915,11 +928,12 @@ def get_fetch_log(job_type: Literal['ths_industry_quote', 'tdx_stocks_quote'], c
     WHERE job_type = %s
     ORDER BY created_at DESC
     """
-    vals = [job_type,]
+    vals = [
+        job_type,
+    ]
     if count != None and count > 0:
         sql += "LIMIT %s" if count else ""
         vals.append(count)
-
 
     results = pool.query(sql, vals)
     return [
@@ -961,14 +975,20 @@ def loop(is_run_once=False):
                 save_fetch_log("tdx_stocks_quote", "success", "获取通达信实时数据成功")
             except Exception as e:
                 log.info(f"获取通达信实时数据失败: {e}")
-                save_fetch_log("tdx_stocks_quote", "failed", f"获取通达信实时数据失败: {e}")
-            
+                save_fetch_log(
+                    "tdx_stocks_quote", "failed", f"获取通达信实时数据失败: {e}"
+                )
+
             try:
                 fetch_and_save(marketOnly=True)
-                save_fetch_log("ths_industry_quote", "success", "获取同花顺行业数据成功")
+                save_fetch_log(
+                    "ths_industry_quote", "success", "获取同花顺行业数据成功"
+                )
             except Exception as e:
                 log.info(f"获取同花顺行业数据失败: {e}")
-                save_fetch_log("ths_industry_quote", "failed", f"获取同花顺行业数据失败: {e}")
+                save_fetch_log(
+                    "ths_industry_quote", "failed", f"获取同花顺行业数据失败: {e}"
+                )
 
         else:
             today_first_run = True
@@ -977,19 +997,15 @@ def loop(is_run_once=False):
         if is_run_once:
             break
         time.sleep(60 * 5)
-        
 
 
 if __name__ == "__main__":
-    run_once = True if os.getenv("LOOP_MANUAL", "FALSE") == "TRUE" else False
-    loop(run_once)
-    # fetch_all_qfq_and_save()
-    # loop()
-    # print(get_stock_day_price("600268", "20140101"))
-    # 标准市场
-    # client = Quotes.factory(market="std", multithread=True, heartbeat=True)
-    # # k 线数据
-    # client.bars(symbol="600036", frequency=9, offset=10)
+    fetch_ths_industry_history_day_price = (
+        True if os.getenv("FETCH_THS_INDUSTRY_HISTORY_DAY_PRICE", "0") == "1" else False
+    )
+    run_once = True if os.getenv("LOOP_MANUAL", "0") == "1" else False
 
-    # client.quotes(symbol=["000001", "600300"])
-    # fetch_rk_from_tdx_and_save()
+    if fetch_ths_industry_history_day_price:
+        fetch_and_save(start_date="20100101", marketOnly=True)
+    else:
+        loop(run_once)
