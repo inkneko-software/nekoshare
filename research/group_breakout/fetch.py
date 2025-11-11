@@ -54,7 +54,9 @@ mysql_user = os.environ.get("DB_USER")
 mysql_passwd = os.environ.get("DB_PASSWORD")
 
 engine = create_engine(
-    f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare"
+    f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare",
+    pool_pre_ping=True,
+    pool_recycle=3600
 )
 ts.set_token(tushare_api_key)
 
