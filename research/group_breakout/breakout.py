@@ -11,6 +11,7 @@ import group_breakout.fetch as nk
 from pydantic import BaseModel
 import warnings
 from utils.log import LoggerFactory
+
 log = LoggerFactory.get_logger(__name__)
 
 # 屏蔽特定类型的弃用警告
@@ -42,11 +43,13 @@ def get_recent_down_trend_line(candlesticks: list[Candlestick]) -> tuple[float, 
     """
     pass
 
+
 class Rectangle(BaseModel):
     start_date: date
     end_date: date
     high_price: float
     low_price: float
+
 
 def is_recent_flat_consolidation(
     candlesticks: list[Candlestick],
@@ -65,7 +68,7 @@ def is_recent_flat_consolidation(
     # 枚举区间内所有可能的箱体，选取三个箱体
     # 第一个箱体是以当前日期为起点的最合适箱体（用于与下面两个作比较）
     # 第二个是区间内最近的波动最小的箱体
-    # 第三个是区间内最大的波动最小的箱体 
+    # 第三个是区间内最大的波动最小的箱体
     for i in range(0, len(candlesticks)):
         for j in range(i, len(candlesticks)):
             region = candlesticks[i : j + 1]
@@ -97,17 +100,17 @@ def is_recent_flat_consolidation(
 
     if len(possible_regions) == 0:
         return (None, None, None)
-    #取最近且波动最小的箱体
-    possible_regions.sort(key=lambda r: (r[1]) ,reverse=True)
+    # 取最近且波动最小的箱体
+    possible_regions.sort(key=lambda r: (r[1]), reverse=True)
     tmp = possible_regions[: round(len(possible_regions) / 3)]
     tmp.sort(key=lambda r: (r[4] + r[5]))
     recent_box = tmp[0] if len(tmp) > 0 else None
-    #取波动最小且长度最大的箱体
+    # 取波动最小且长度最大的箱体
     possible_regions.sort(key=lambda r: (r[4] + r[5]))
     tmp = possible_regions[: round(len(possible_regions) / 3)]
     tmp.sort(key=lambda r: (r[1] - r[0]), reverse=True)
     best_box = tmp[0] if len(tmp) > 0 else None
-    #nearest_box为当前区间最后一天前为右边界的箱体
+    # nearest_box为当前区间最后一天前为右边界的箱体
     region = [r for r in possible_regions if (r[1] == len(candlesticks) - 1)]
     region.sort(key=lambda r: (r[4] + r[5]))
     tmp = region[: round(len(region) / 3)]
@@ -115,27 +118,38 @@ def is_recent_flat_consolidation(
     nearest_box = tmp[0] if len(tmp) > 0 else None
 
     return [
-        Rectangle(
-            start_date=candlesticks[nearest_box[0]].date,
-            end_date=candlesticks[nearest_box[1]].date,
-            high_price=nearest_box[2],
-            low_price=nearest_box[3],
-        ) if nearest_box is not None else None,
-        Rectangle(
-            start_date=candlesticks[recent_box[0]].date,
-            end_date=candlesticks[recent_box[1]].date,
-            high_price=recent_box[2],
-            low_price=recent_box[3],
-        ) if recent_box is not None else None,
-        Rectangle(
-            start_date=candlesticks[best_box[0]].date,
-            end_date=candlesticks[best_box[1]].date,
-            high_price=best_box[2],
-            low_price=best_box[3],
-        ) if best_box is not None else None,
-        
-        
+        (
+            Rectangle(
+                start_date=candlesticks[nearest_box[0]].date,
+                end_date=candlesticks[nearest_box[1]].date,
+                high_price=nearest_box[2],
+                low_price=nearest_box[3],
+            )
+            if nearest_box is not None
+            else None
+        ),
+        (
+            Rectangle(
+                start_date=candlesticks[recent_box[0]].date,
+                end_date=candlesticks[recent_box[1]].date,
+                high_price=recent_box[2],
+                low_price=recent_box[3],
+            )
+            if recent_box is not None
+            else None
+        ),
+        (
+            Rectangle(
+                start_date=candlesticks[best_box[0]].date,
+                end_date=candlesticks[best_box[1]].date,
+                high_price=best_box[2],
+                low_price=best_box[3],
+            )
+            if best_box is not None
+            else None
+        ),
     ]
+
 
 def _test_is_recent_flat_consolidation():
 
@@ -201,9 +215,11 @@ def is_break_out(candlesticks: list[StockDayPrice]) -> ProbeResult:
 
     return False
 
+
 class BreakoutResult(BaseModel):
     is_break_out: bool
     new_high_days: float
+
 
 class BreakoutStrategyExecutingResult(BaseModel):
     type: str
@@ -216,7 +232,11 @@ class BreakoutStrategyExecutingResult(BaseModel):
     rectangle_large: Optional[Rectangle] = None
 
 
-def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_date = "20250601", end_date = "20251027"):
+def breakout(
+    resultQueue: queue.Queue[BreakoutStrategyExecutingResult],
+    start_date="20250601",
+    end_date="20251027",
+):
     try:
         # 选取当日突破板块，并选取其成分股中突破的个股
         # end_date = date.today().strftime("%Y%m%d")
@@ -234,7 +254,7 @@ def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_da
             )
             if len(ret_day) < 30:
                 continue
-            
+
             d = [
                 Candlestick(
                     date=data.trade_date,
@@ -251,7 +271,7 @@ def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_da
                 for data in ret_day
             ]
             industry.change_pct = d[-1].change_pct
-            (a, b,c) = is_recent_flat_consolidation(d)
+            (a, b, c) = is_recent_flat_consolidation(d)
             if (
                 d[-1].change_pct > 0
                 and (result := is_break_out(d))
@@ -287,7 +307,9 @@ def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_da
             stocks = nk.get_ths_industry_stocks(industry.code)
             for stock in stocks:
                 # 只做主板
-                if not stock.stock_code.startswith(("6", "0")) or stock.stock_code.startswith("688"):
+                if not stock.stock_code.startswith(
+                    ("6", "0")
+                ) or stock.stock_code.startswith("688"):
                     continue
                 if stock.stock_name.startswith(("*", "ST", "退", "N", "C")):
                     continue
@@ -314,10 +336,12 @@ def breakout(resultQueue: queue.Queue[BreakoutStrategyExecutingResult], start_da
                     )
                     for data in ret_day
                 ]
-                log.info(f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}")
-                (a, b,c) = is_recent_flat_consolidation(d)
+                log.info(
+                    f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}"
+                )
+                (a, b, c) = is_recent_flat_consolidation(d)
                 if (
-                    a != None #要求6日内不能超过25
+                    a != None  # 要求6日内不能超过25
                     and d[-1].close > a.high_price
                     and (d[-1].close - a.high_price) / a.high_price < 0.06
                     and (result := is_break_out(d))
