@@ -474,7 +474,7 @@ def fetch_all_qfq_and_save():
         pool.queryMany(sql, records)
 
 
-def fetch_today_qfq_and_save():
+def fetch_today_qfq_and_save(trade_date: None):
     """
     获取当日所有的复权因子，用于每日更新
     """
@@ -484,10 +484,12 @@ def fetch_today_qfq_and_save():
         ON DUPLICATE KEY UPDATE
         adj_factor = VALUES(adj_factor)
     """
+    if trade_date is None:
+        trade_date = get_latest_trading_day().strftime("%Y%m%d")
     pool = MySQLConnectionPool()
     pro = ts.pro_api()
     df = pro.adj_factor(
-        ts_code="", trade_date=get_latest_trading_day().strftime("%Y%m%d")
+        ts_code="", trade_date = trade_date
     )
     log.info(df)
     records = [
