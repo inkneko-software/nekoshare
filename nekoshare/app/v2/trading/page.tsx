@@ -218,7 +218,7 @@ export default function TradingPage() {
         console.log(isEnabled)
         if (!isEnabled) {
             if (!isPaused) {
-                newSimulate(selectedTradeDate.format("YYYY-MM-DD"), account.balance)
+                newSimulate(selectedTradeDate.format("YYYY-MM-DD"), initialBalance)
             }
             setEnabled(true)
             setPaused(false)
