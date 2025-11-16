@@ -162,7 +162,7 @@ export function SimulateTradingContextProvider({ children }: { children: React.R
     }
 
     const getTradeFee = (amount: number) => {
-        return Math.max(amount * 0.00025, 5);
+        return Math.max(Math.round(amount * 0.00025 * 100) / 100, 5);
     }
 
     const handleBuy = (code: string, name: string, price: number, quantity: number) => {
@@ -193,13 +193,14 @@ export function SimulateTradingContextProvider({ children }: { children: React.R
                     // 持仓市值
                     let _equity: number = position.equity + price * quantity;
                     // 持仓成本
-                    let _cost: number = _equity / _quantity;
+                    let _cost: number = (_equity + trade_fee) / _quantity;
                     found = true;
                     return {
                         ...position,
                         quantity: _quantity,
                         equity: _equity,
-                        profitRatio: position.profit / (_equity - position.profit) * 100,
+                        profit: position.profit - trade_fee,
+                        profitRatio: (position.profit - trade_fee) / (_equity - position.profit) * 100,
                         cost: _cost
                     };
                 }
@@ -234,9 +235,9 @@ export function SimulateTradingContextProvider({ children }: { children: React.R
                         quantity: quantity,
                         avilableQuantity: 0,
                         price: price,
-                        profit: 0,
-                        profitRatio: 0,
-                        cost: price,
+                        profit: 0 - trade_fee,
+                        profitRatio: (0 - trade_fee) / (price * quantity - trade_fee) * 100,
+                        cost: (price * quantity + trade_fee) / quantity,
                         equity: price * quantity,
                     }
                 ]
