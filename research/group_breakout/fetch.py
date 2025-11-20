@@ -474,7 +474,7 @@ def fetch_all_qfq_and_save():
         pool.queryMany(sql, records)
 
 
-def fetch_today_qfq_and_save(trade_date: None):
+def fetch_today_qfq_and_save(trade_date=None):
     """
     获取当日所有的复权因子，用于每日更新
     """
