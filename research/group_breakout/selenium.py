@@ -21,6 +21,7 @@ class ChromeDriverSingleton:
         return cls._instance
 
     def __init_broswer(self):
+        self.counter = 0
         opts = Options()
         opts.add_argument("--headless=new")  # 需要无头时启用
         opts.binary_location = "chrome-linux64/chrome"
@@ -59,6 +60,9 @@ class ChromeDriverSingleton:
         self.driver = driver
 
     def get(self, url: str, raw_js=False):
+        if self.counter > 20:
+            self.stop()
+        self.counter += 1
         if self.driver == None:
             self.start()
         self.driver.get(url)
