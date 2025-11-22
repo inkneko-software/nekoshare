@@ -16,7 +16,6 @@
     "@mui/material": "^7.2.0",
     "@mui/material-nextjs": "^7.3.3",
     "@mui/x-date-pickers": "^8.9.2",
-    "cn-holiday": "^1.2.1",
     "dayjs": "^1.11.13",
     "decimal.js": "^10.6.0",
     "lightweight-charts": "^5.0.8",
