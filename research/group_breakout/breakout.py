@@ -2,15 +2,14 @@ from math import sqrt
 import queue
 from typing import Optional
 from entity.StockDayPrice import StockDayPrice
-import akshare as ak
-from datetime import date
-import json
+from datetime import date, date, datetime
+from dateutil.relativedelta import relativedelta
 from dataclasses import dataclass
-import tushare as ts
 import group_breakout.fetch as nk
 from pydantic import BaseModel
 import warnings
 from utils.log import LoggerFactory
+from group_breakout import trade_day
 
 log = LoggerFactory.get_logger(__name__)
 
@@ -301,7 +300,7 @@ def breakout(
                     rectangle_nearest=industry.a,
                     rectangle_recent=industry.b,
                     rectangle_large=industry.c,
-                ).model_dump_json()
+                )
                 # f"突破板块: {industry.name}, {industry.change_pct}% {industry.result}"
             )  # 回发给客户端
             stocks = nk.get_ths_industry_stocks(industry.code)
@@ -336,7 +335,7 @@ def breakout(
                     )
                     for data in ret_day
                 ]
-                log.info(
+                log.debug(
                     f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}"
                 )
                 (a, b, c) = is_recent_flat_consolidation(d)
@@ -360,12 +359,131 @@ def breakout(
                             rectangle_nearest=a,
                             rectangle_recent=b,
                             rectangle_large=c,
-                        ).model_dump_json()
+                        )
                     )
     finally:
         resultQueue.put(None)
 
 
+class ProfitResult(BaseModel):
+    """
+    个股表现
+    """
+
+    three_day: float
+    five_day: float
+    ten_day: float
+
+
+class BacktraceResult(BaseModel):
+    """
+    某日回测记录
+    """
+
+    date: str
+    results: list[BreakoutStrategyExecutingResult] = []
+    backtrace_results: list[ProfitResult] = []
+
+
+def breakout_backtrace(
+    resultQueue: queue.Queue[BacktraceResult],
+    start_date="20250601",
+    end_date="20251021",
+):
+    """
+    对指定日期进行每日回测，只返回3日内涨幅大于5%，或5日内涨幅大于5%，或10日内涨幅大于8%的个股
+    """
+    start_date = datetime.strptime(start_date, "%Y%m%d").date()
+    end_date = datetime.strptime(end_date, "%Y%m%d").date()
+
+    if start_date > end_date:
+        return
+
+    # 从最后一个交易日开始回测
+    trade_date = (
+        end_date
+        if trade_day.is_trading_day(end_date)
+        else trade_day.get_prev_trading_day(trade_date)
+    )
+    while trade_date >= start_date:
+        log.info(f"开始处理: {trade_date}")
+        # 获取当日策略结果
+        tmpResultQueue = queue.Queue()
+        breakout(tmpResultQueue, trade_date - relativedelta(months=3), trade_date)
+
+        # 跳过无结果的日期
+        if tmpResultQueue.qsize() == 0:
+            continue
+
+        results = []
+        backtrace_results = []
+        last_industry = None
+        item = tmpResultQueue.get()
+        while item != None:
+            if item.type != "stock":
+                last_industry = item
+                item = tmpResultQueue.get()
+                continue
+
+            # 查询后10日涨幅
+            delta_date = trade_date
+            for i in range(10):
+                delta_date = trade_day.get_next_trading_day(delta_date)
+            stockPrices = nk.get_stock_day_price(item.code, trade_date, delta_date)
+            if len(stockPrices) < 10:
+                item = tmpResultQueue.get()
+                continue
+            three_day_change_pct = (
+                max([s.close for s in stockPrices[:3]]) - stockPrices[0].close
+            ) / stockPrices[0].close
+            five_day_change_pct = (
+                max([s.close for s in stockPrices[:5]]) - stockPrices[0].close
+            ) / stockPrices[0].close
+            ten_day_change_pct = (
+                max([s.close for s in stockPrices[:10]]) - stockPrices[0].close
+            ) / stockPrices[0].close
+            if (
+                three_day_change_pct >= 0.05
+                or five_day_change_pct >= 0.05
+                or ten_day_change_pct >= 0.08
+            ):
+                if last_industry != None:
+                    results.append(last_industry)
+                    backtrace_results.append(
+                        ProfitResult(three_day=0, five_day=0, ten_day=0)
+                    )
+                    last_industry = None
+
+                results.append(item)
+                backtrace_results.append(
+                    ProfitResult(
+                        three_day=three_day_change_pct,
+                        five_day=five_day_change_pct,
+                        ten_day=ten_day_change_pct,
+                    )
+                )
+            item = tmpResultQueue.get()
+
+        resultQueue.put(
+            BacktraceResult(
+                date=trade_date.strftime("%Y%m%d"),
+                results=results,
+                backtrace_results=backtrace_results,
+            )
+        )
+        log.info(f"日期: {trade_date}), 个数: {len(results)}")
+        for i in range(len(results)):
+            log.info(
+                f"\t个股: {results[i].code} {results[i].name}, 涨幅: {backtrace_results[i].three_day:.2%}, {backtrace_results[i].five_day:.2%}, {backtrace_results[i].ten_day:.2%}"
+            )
+
+        trade_date = trade_day.get_prev_trading_day(trade_date)
+
+    resultQueue.put(None)
+
+
 if __name__ == "__main__":
     # main()
-    _test_is_recent_flat_consolidation()
+    #_test_is_recent_flat_consolidation()
+    resultQueue = queue.Queue()
+    breakout_backtrace(resultQueue)

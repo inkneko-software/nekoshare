@@ -107,33 +107,33 @@ class TimeRange(BaseModel):
 async def websocket_endpoint(websocket: WebSocket):
     # 接受客户端连接
     await websocket.accept()
-    data = await websocket.receive_json()  # 收到客户端发来的消息
+    data = await websocket.receive_json()
     timeRange = TimeRange(**data)
 
-    resultQueue = queue.Queue()
+    resultQueue: queue.Queue[BreakoutStrategyExecutingResult] = queue.Queue()
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, breakout, resultQueue, timeRange.start_date, timeRange.end_date)
     while True:
         msg = await asyncio.to_thread(resultQueue.get)
         if msg == None:
             break
-        await websocket.send_text(msg)
+        await websocket.send_text(msg.model_dump_json())
     await websocket.close()
 
 @app.websocket("/ws/breakout_backtrace")
 async def websocket_endpoint(websocket: WebSocket):
-    # 接受客户端连接
     await websocket.accept()
-    data = await websocket.receive_text()  # 收到客户端发来的消息
+    data = await websocket.receive_json()  # 收到客户端发来的消息
+    timeRange = TimeRange(**data)
 
-    resultQueue = queue.Queue()
+    resultQueue: queue.Queue[BacktraceResult] = queue.Queue()
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, breakout, resultQueue)
+    loop.run_in_executor(None, breakout_backtrace, resultQueue, timeRange.start_date, timeRange.end_date)
     while True:
-        msg = await asyncio.to_thread(resultQueue.get)
-        if msg == None:
+        elem = await asyncio.to_thread(resultQueue.get)
+        if elem == None:
             break
-        await websocket.send_text(msg)
+        await websocket.send_text(elem.model_dump_json())
     await websocket.close()
 
 
