@@ -79,9 +79,10 @@ interface BackTracePriceTableProps {
     rows: BackTracePriceTableData[];
     selectedId?: number;
     onSelectedChange?: (selectedId: number) => void;
+    fullHeight?: boolean;
 }
 
-export default function BackTracePriceTable({ enableBackTrace, columnNames, columnWidths, rows, selectedId, onSelectedChange }: BackTracePriceTableProps) {
+export default function BackTracePriceTable({ enableBackTrace, columnNames, columnWidths, rows, selectedId, onSelectedChange, fullHeight }: BackTracePriceTableProps) {
 
     const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
         if (selectedId === undefined){
@@ -96,7 +97,7 @@ export default function BackTracePriceTable({ enableBackTrace, columnNames, colu
     };
 
     return (
-        <Paper sx={{ height: '100%', width: '100%', overflow: 'auto', ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle } }} square>
+        <Paper sx={[{ width: '100%', ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle }}, !fullHeight && {height: '100%',overflow: 'auto', } ]} square>
             <TableContainer>
                 <Table
                     aria-labelledby="tableTitle"
