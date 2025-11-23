@@ -1,8 +1,5 @@
 FROM python:3.12-bookworm
 
-WORKDIR /research
-COPY ./research /research
-
 RUN echo "deb http://mirrors.tencent.com/debian/ bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list \
     && echo "deb-src http://mirrors.tencent.com/debian/ bookworm main contrib non-free non-free-firmware" >> /etc/apt/sources.list \
     && echo "deb http://mirrors.tencent.com/debian/ bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list \
@@ -25,4 +22,6 @@ RUN pip install -r requirements.txt -i https://mirrors.tencent.com/pypi/simple/
 RUN unzip driver.zip
 RUN unzip chrome.zip
 
-CMD ["python3", "-m", "group_breakout.http"]
+WORKDIR /research
+COPY ./research /research
+CMD [ "python3", "-m", "group_breakout.http" ]
