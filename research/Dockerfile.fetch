@@ -18,10 +18,11 @@ RUN echo "deb http://mirrors.tencent.com/debian/ bookworm main contrib non-free 
     libxrandr2 libxrender1 libxss1 libxtst6 xdg-utils ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install -r requirements.txt -i https://mirrors.tencent.com/pypi/simple/
 RUN unzip driver.zip
 RUN unzip chrome.zip
 
 WORKDIR /research
 COPY ./research /research
+RUN pip install -r requirements.txt -i https://mirrors.tencent.com/pypi/simple/
+
 CMD [ "python3", "-m", "group_breakout.fetch" ]
