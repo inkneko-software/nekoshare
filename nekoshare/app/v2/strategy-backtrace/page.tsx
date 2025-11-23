@@ -93,6 +93,8 @@ interface BacktraceResult {
     date: string
     results: BreakoutStrategyExecutingResult[]
     backtrace_results: ProfitResult[]
+    total: number
+    success_num: number
 }
 
 
@@ -278,7 +280,7 @@ export default function StrategyBacktracePage() {
                             <MenuItem value={30} disabled>双突破</MenuItem>
                         </Select>
                     </FormControl>
-                    <Typography variant='body2' sx={{ width: '60%', margin: '0px 8px' }}>总收益率 5%</Typography>
+                    <Typography variant='body2' sx={{ width: '60%', margin: '0px 8px' }}>仅供图形参考</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', padding: '8px 8px', marginTop: '8px' }}>
                     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='zh-cn'>
@@ -312,9 +314,11 @@ export default function StrategyBacktracePage() {
                                     expandIcon={<ExpandMoreIcon />}
                                     aria-controls="panel1-content"
                                     id="panel1-header"
-                                    sx={[dayIndex === selectedDayId && {  borderLeft: '4px solid #1976d2', backgroundColor: '#314357'}]}
+                                    sx={[dayIndex === selectedDayId && {  borderLeft: '4px solid #1976d2', backgroundColor: '#314357', display: 'flex'}]}
                                 >
-                                    <Typography component="span">{backtradeResult.date}</Typography>
+                                    <Typography component="span">{`${backtradeResult.date}`}</Typography>
+                                    <Typography component="span" sx={{ marginLeft: 'auto',width: '12ch',  }}>{`胜率 ${(backtradeResult.success_num/ backtradeResult.total * 100).toFixed(2)}%`}</Typography>
+                                    <Typography component="span" sx={{ marginLeft: '8px', width: '10ch', textAlign: 'right' }}>{`${backtradeResult.success_num}/${backtradeResult.total}`}</Typography>
                                 </AccordionSummary>
                                 <AccordionDetails sx={{padding: '0px 0px'}}>
                                     <BackTracePriceTable
