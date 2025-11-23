@@ -383,6 +383,8 @@ class BacktraceResult(BaseModel):
     date: str
     results: list[BreakoutStrategyExecutingResult] = []
     backtrace_results: list[ProfitResult] = []
+    total: int
+    success_num: int
 
 
 def breakout_backtrace(
@@ -419,12 +421,15 @@ def breakout_backtrace(
         backtrace_results = []
         last_industry = None
         item = tmpResultQueue.get()
+        total = 0
+        success_num = 0
         while item != None:
             if item.type != "stock":
                 last_industry = item
                 item = tmpResultQueue.get()
                 continue
 
+            total += 1
             # 查询后10日涨幅
             delta_date = trade_date
             for i in range(10):
@@ -453,7 +458,7 @@ def breakout_backtrace(
                         ProfitResult(three_day=0, five_day=0, ten_day=0)
                     )
                     last_industry = None
-
+                success_num += 1
                 results.append(item)
                 backtrace_results.append(
                     ProfitResult(
@@ -469,6 +474,8 @@ def breakout_backtrace(
                 date=trade_date.strftime("%Y%m%d"),
                 results=results,
                 backtrace_results=backtrace_results,
+                total=total,
+                success_num=success_num,
             )
         )
         log.info(f"日期: {trade_date}), 个数: {len(results)}")
