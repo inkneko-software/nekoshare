@@ -29,7 +29,7 @@ from entity.StockDayPrice import StockDayPrice
 from entity.FetchLog import FetchLog
 from group_breakout.trade_day import get_latest_trading_day
 from group_breakout.selenium import _selenium_get
-
+from group_breakout import trade_day
 import requests.exceptions
 from sqlalchemy import create_engine
 import pandas as pd
@@ -827,6 +827,7 @@ def fetch_rk_from_tdx_and_save():
     rows = pool.query(sql)
     i = 0
     stocks = {}
+    latest_trade_day = trade_day.get_latest_trading_day()
     for row in rows:
         code = row[0]
         name = row[1]
@@ -861,7 +862,7 @@ def fetch_rk_from_tdx_and_save():
             vals = (
                 code,
                 name,
-                str(date.today()),
+                str(latest_trade_day),
                 float(data.open),
                 float(data.price),
                 float(data.high),
