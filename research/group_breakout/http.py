@@ -6,10 +6,12 @@ from pydantic import BaseModel
 import uvicorn
 import group_breakout.fetch as nk
 from group_breakout.breakout import *
+from group_breakout.strategies.breakout_v1_1 import *
 import queue
 import asyncio
 import group_breakout.trade_day as trade_day
 from datetime import timedelta, date, datetime
+from model import *
 import os
 # class Input(BaseModel):
 #     a: float
@@ -120,6 +122,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_text(msg.model_dump_json())
     await websocket.close()
 
+
 @app.websocket("/ws/breakout_backtrace")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -129,6 +132,39 @@ async def websocket_endpoint(websocket: WebSocket):
     resultQueue: queue.Queue[BacktraceResult] = queue.Queue()
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, breakout_backtrace, resultQueue, timeRange.start_date, timeRange.end_date)
+    while True:
+        elem = await asyncio.to_thread(resultQueue.get)
+        if elem == None:
+            break
+        await websocket.send_text(elem.model_dump_json())
+    await websocket.close()
+
+@app.websocket("/ws/breakout_v1_1_execution")
+async def websocket_endpoint(websocket: WebSocket):
+    # 接受客户端连接
+    await websocket.accept()
+    data = await websocket.receive_json()
+    timeRange = TimeRange(**data)
+
+    resultQueue: queue.Queue[BreakoutStrategyExecutingResult] = queue.Queue()
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, breakout_v1_1, resultQueue, timeRange.start_date, timeRange.end_date)
+    while True:
+        msg = await asyncio.to_thread(resultQueue.get)
+        if msg == None:
+            break
+        await websocket.send_text(msg.model_dump_json())
+    await websocket.close()
+
+@app.websocket("/ws/breakout_v1_1_backtrace")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    data = await websocket.receive_json()  # 收到客户端发来的消息
+    timeRange = TimeRange(**data)
+
+    resultQueue: queue.Queue[BacktraceResult] = queue.Queue()
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, breakout_v1_1_backtrace, resultQueue, timeRange.start_date, timeRange.end_date)
     while True:
         elem = await asyncio.to_thread(resultQueue.get)
         if elem == None:

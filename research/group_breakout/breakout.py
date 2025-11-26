@@ -6,10 +6,17 @@ from datetime import date, date, datetime
 from dateutil.relativedelta import relativedelta
 from dataclasses import dataclass
 import group_breakout.fetch as nk
-from pydantic import BaseModel
 import warnings
 from utils.log import LoggerFactory
 from group_breakout import trade_day
+from model import (
+    Rectangle,
+    BreakoutResult,
+    ProfitResult,
+    BreakoutStrategyExecutingResult,
+    BacktraceResult,
+    Candlestick
+)
 
 log = LoggerFactory.get_logger(__name__)
 
@@ -24,30 +31,11 @@ warnings.filterwarnings(
 warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
 
 
-@dataclass
-class Candlestick:
-    date: date
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: int
-    change_pct: float
-    pre_close: float
-
-
 def get_recent_down_trend_line(candlesticks: list[Candlestick]) -> tuple[float, float]:
     """
     获取最近的下降趋势线
     """
     pass
-
-
-class Rectangle(BaseModel):
-    start_date: date
-    end_date: date
-    high_price: float
-    low_price: float
 
 
 def is_recent_flat_consolidation(
@@ -197,38 +185,16 @@ def new_high(candlesticks: list[Candlestick]) -> int:
     return i
 
 
-@dataclass
-class ProbeResult:
-    is_break_out: bool
-    new_high_days: int
-
-
-def is_break_out(candlesticks: list[StockDayPrice]) -> ProbeResult:
+def is_break_out(candlesticks: list[StockDayPrice]) -> BreakoutResult:
     """
     判断最后一根K线是否突破
 
     目前的逻辑是判断是创几日新高
     """
     if (n := new_high(candlesticks)) > 0:
-        return ProbeResult(True, n)
+        return BreakoutResult(is_break_out=True, new_high_days=n)
 
     return False
-
-
-class BreakoutResult(BaseModel):
-    is_break_out: bool
-    new_high_days: float
-
-
-class BreakoutStrategyExecutingResult(BaseModel):
-    type: str
-    code: str
-    name: str
-    change_pct: float
-    result: BreakoutResult
-    rectangle_nearest: Optional[Rectangle] = None
-    rectangle_recent: Optional[Rectangle] = None
-    rectangle_large: Optional[Rectangle] = None
 
 
 def breakout(
@@ -365,28 +331,6 @@ def breakout(
         resultQueue.put(None)
 
 
-class ProfitResult(BaseModel):
-    """
-    个股表现
-    """
-
-    three_day: float
-    five_day: float
-    ten_day: float
-
-
-class BacktraceResult(BaseModel):
-    """
-    某日回测记录
-    """
-
-    date: str
-    results: list[BreakoutStrategyExecutingResult] = []
-    backtrace_results: list[ProfitResult] = []
-    total: int
-    success_num: int
-
-
 def breakout_backtrace(
     resultQueue: queue.Queue[BacktraceResult],
     start_date="20250601",
@@ -491,6 +435,6 @@ def breakout_backtrace(
 
 if __name__ == "__main__":
     # main()
-    #_test_is_recent_flat_consolidation()
+    # _test_is_recent_flat_consolidation()
     resultQueue = queue.Queue()
     breakout_backtrace(resultQueue)
