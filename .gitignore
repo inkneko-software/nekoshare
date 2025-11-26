@@ -3,4 +3,4 @@ data/from_tdx/hsjday/
 venv/
 research/chrome-linux64
 research/chromedriver-linux64
-research/*/__pycache__/
+research/**/__pycache__/
