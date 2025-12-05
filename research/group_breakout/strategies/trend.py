@@ -270,7 +270,133 @@ def breakout(
     start_date="20250601",
     end_date="20251027",
 ):
-    pass
+    try:
+        # 选取当日突破板块，并选取其成分股中突破的个股
+        # end_date = date.today().strftime("%Y%m%d")
+        # 获取所有行业板块
+        industries = nk.get_ths_industry_market()
+        selected_industries = []
+        results = []
+        for industry in industries:
+            d = []
+            i = 0
+            ret_day = nk.get_ths_industry_day_price(
+                code=industry.code,
+                start_date=start_date,
+                end_date=end_date,  # date.today().strftime("%Y%m%d")
+            )
+            if len(ret_day) < 30:
+                continue
+
+            d = [
+                Candlestick(
+                    date=data.trade_date,
+                    open=data.open,
+                    high=data.high,
+                    low=data.low,
+                    close=data.close,
+                    volume=data.volume,
+                    change_pct=round(
+                        (data.close - data.pre_close) / data.pre_close * 100, 2
+                    ),
+                    pre_close=data.pre_close,
+                )
+                for data in ret_day
+            ]
+            industry.change_pct = d[-1].change_pct
+            (a, b, c) = is_recent_flat_consolidation(d)
+            if (
+                d[-1].change_pct > 0
+                and (result := is_break_out(d))
+                and result.new_high_days > 5
+                and d[-1].close > a.high_price
+                and (float(d[-1].close) - a.high_price) / a.high_price < 0.05
+            ):
+                industry.result = result
+                industry.a = a
+                industry.b = b
+                industry.c = c
+                selected_industries.append(industry)
+
+        selected_industries.sort(key=lambda ind: ind.change_pct, reverse=True)
+        # 获取所有选中板块的成分股
+        for industry in selected_industries:
+            resultQueue.put(
+                BreakoutStrategyExecutingResult(
+                    type="industry",
+                    code=industry.code,
+                    name=industry.name,
+                    change_pct=float(industry.change_pct),
+                    result=BreakoutResult(
+                        is_break_out=industry.result.is_break_out,
+                        new_high_days=industry.result.new_high_days,
+                    ),
+                    rectangle_nearest=industry.a,
+                    rectangle_recent=industry.b,
+                    rectangle_large=industry.c,
+                )
+                # f"突破板块: {industry.name}, {industry.change_pct}% {industry.result}"
+            )  # 回发给客户端
+            stocks = nk.get_ths_industry_stocks(industry.code)
+            for stock in stocks:
+                # 只做主板
+                if not stock.stock_code.startswith(
+                    ("6", "0")
+                ) or stock.stock_code.startswith("688"):
+                    continue
+                if stock.stock_name.startswith(("*", "ST", "退", "N", "C")):
+                    continue
+                d = []
+                i = 0
+                ret_day = nk.get_stock_day_price(
+                    code=stock.stock_code,
+                    start_date=start_date,
+                    end_date=end_date,  # date.today().strftime("%Y%m%d")
+                )
+                if len(ret_day) < 30:
+                    continue
+
+                d = [
+                    Candlestick(
+                        date=data.trade_date,
+                        open=data.open,
+                        high=data.high,
+                        low=data.low,
+                        close=data.close,
+                        volume=data.volume,
+                        change_pct=data.percent_change,
+                        pre_close=data.pre_close,
+                    )
+                    for data in ret_day
+                ]
+                log.debug(
+                    f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}"
+                )
+                (a, b, c) = is_recent_flat_consolidation(d)
+                if (
+                    a != None  # 要求6日内不能超过25
+                    and d[-1].close > a.high_price
+                    and (d[-1].close - a.high_price) / a.high_price < 0.06
+                    and (result := is_break_out(d))
+                    and result.new_high_days > 40
+                ):
+                    resultQueue.put(
+                        BreakoutStrategyExecutingResult(
+                            type="stock",
+                            code=stock.stock_code,
+                            name=stock.stock_name,
+                            change_pct=float(d[-1].change_pct),
+                            result=BreakoutResult(
+                                is_break_out=result.is_break_out,
+                                new_high_days=result.new_high_days,
+                            ),
+                            rectangle_nearest=a,
+                            rectangle_recent=b,
+                            rectangle_large=c,
+                        )
+                    )
+    finally:
+        resultQueue.put(None)
 
 if __name__ == "__main__":
     candlesticks = nk.get_stock_day_price("600268", start_date="20250623", end_date="20251125")
