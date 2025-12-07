@@ -527,7 +527,7 @@ export class TrendLineDrawingTool {
     private _addPoint(p: Point) {
         this._points.push(p);
         if (this._points.length >= 2) {
-            this.addNewRectangle(this._points[0], this._points[1]);
+            this.addNewTrendLine(this._points[0], this._points[1]);
             this.stopDrawing();
             this._onDrawingComplete();
             this._removePreviewRectangle();
@@ -537,7 +537,7 @@ export class TrendLineDrawingTool {
         }
     }
 
-    public addNewRectangle(p1: Point, p2: Point) {
+    public addNewTrendLine(p1: Point, p2: Point) {
         const rectangle = new Rectangle(p1, p2, { ...this._defaultOptions });
         this._rectangles.push(rectangle);
         ensureDefined(this._series).attachPrimitive(rectangle);
