@@ -12,6 +12,8 @@ import asyncio
 import group_breakout.trade_day as trade_day
 from datetime import timedelta, date, datetime
 from model import *
+from group_breakout.strategies.trend import get_rise_trend_line, get_down_trend_line
+from group_breakout.strategies import trend
 import os
 # class Input(BaseModel):
 #     a: float
@@ -171,6 +173,69 @@ async def websocket_endpoint(websocket: WebSocket):
             break
         await websocket.send_text(elem.model_dump_json())
     await websocket.close()
+
+@app.websocket("/ws/breakout_trend")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    data = await websocket.receive_json()  # 收到客户端发来的消息
+    timeRange = TimeRange(**data)
+
+    resultQueue: queue.Queue[BacktraceResult] = queue.Queue()
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, trend.breakout, resultQueue, timeRange.start_date, timeRange.end_date)
+    while True:
+        elem = await asyncio.to_thread(resultQueue.get)
+        if elem == None:
+            break
+        await websocket.send_text(elem.model_dump_json())
+    await websocket.close()
+
+@app.get(base_url + "/stock/getTrendLines")
+def add(code: str, start_date: str = "20140101", end_date: str = None):
+    """
+    获取指定股票的趋势线数据
+
+    :param code: 股票代码
+    :param start_date: 起始日期，格式为 'YYYYMMDD'
+    :param end_date: 结束日期，格式为 'YYYYMMDD'
+
+    :return: 定义见代码
+    """
+    start_date = datetime.strptime(start_date, "%Y%m%d").date()
+    if end_date == None:
+        end_date = trade_day.get_latest_trading_day()
+    else:
+        end_date = datetime.strptime(end_date, "%Y%m%d").date()
+    # 获取股票日线价格数据
+    candlesticks = nk.get_stock_day_price(code, start_date, end_date)
+    if len(candlesticks) == 0:
+        return JSONResponse(status_code=404, content={"message": "代码不存在或无日线数据"})
+    trend_lines = get_down_trend_line(candlesticks)
+    return {"data": trend_lines}
+
+@app.get(base_url + "/ths/getTrendLines")
+def add(code: str, start_date: str = "20140101", end_date: str = None):
+    """
+    获取指定股票的趋势线数据
+
+    :param code: 股票代码
+    :param start_date: 起始日期，格式为 'YYYYMMDD'
+    :param end_date: 结束日期，格式为 'YYYYMMDD'
+
+    :return: 定义见代码
+    """
+    start_date = datetime.strptime(start_date, "%Y%m%d").date()
+    if end_date == None:
+        end_date = trade_day.get_latest_trading_day()
+    else:
+        end_date = datetime.strptime(end_date, "%Y%m%d").date()
+    # 获取股票日线价格数据
+    candlesticks = nk.get_ths_industry_day_price(code, start_date, end_date)
+    if len(candlesticks) == 0:
+        return JSONResponse(status_code=404, content={"message": "代码不存在或无日线数据"})
+    trend_lines = get_down_trend_line(candlesticks)
+    return {"data": trend_lines}
+
 
 
 if __name__ == "__main__":

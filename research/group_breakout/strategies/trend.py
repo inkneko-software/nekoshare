@@ -3,8 +3,13 @@ from model import TrendLine
 from entity import StockDayPrice
 import queue
 import group_breakout.fetch as nk
-from model import BreakoutStrategyExecutingResult
-def get_rise_trend_line(candlesticks: list[StockDayPrice]) -> list[TrendLine]:
+from model import TrendBreakoutStrategyExecutingResult
+from datetime import date, datetime, timedelta
+from group_breakout.trade_day import get_prev_trading_day
+from utils.log import LoggerFactory
+log = LoggerFactory.get_logger(__name__)
+
+def get_rise_trend_line(candlesticks: list[Candlestick]) -> list[TrendLine]:
     """
     获取上升趋势线
 
@@ -266,9 +271,9 @@ def get_down_trend_line(candlesticks: list[Candlestick]) -> list[TrendLine]:
         
 
 def breakout(
-    resultQueue: queue.Queue[BreakoutStrategyExecutingResult],
+    resultQueue: queue.Queue[TrendBreakoutStrategyExecutingResult],
     start_date="20250601",
-    end_date="20251027",
+    end_date="20251206",
 ):
     try:
         # 选取当日突破板块，并选取其成分股中突破的个股
@@ -285,12 +290,14 @@ def breakout(
                 start_date=start_date,
                 end_date=end_date,  # date.today().strftime("%Y%m%d")
             )
+            print(industry, len(ret_day), start_date, end_date)
+
             if len(ret_day) < 30:
                 continue
 
             d = [
                 Candlestick(
-                    date=data.trade_date,
+                    trade_date=data.trade_date,
                     open=data.open,
                     high=data.high,
                     low=data.low,
@@ -303,37 +310,50 @@ def breakout(
                 )
                 for data in ret_day
             ]
+
             industry.change_pct = d[-1].change_pct
-            (a, b, c) = is_recent_flat_consolidation(d)
+            trend_lines = get_down_trend_line(d)
+            # 计算三根趋势线与当日价格，是否仅两日内突破该趋势线价格
+            # 即：近两日价格均位于趋势线之上，或仅当日价格位于趋势线之上，而趋势线内的其他K线均小于趋势线价格
+            today =  d[-1].trade_date
+            is_breakout = False
+            for line in trend_lines:
+                today_trend_price = line.slope * (len(d) - 1) + line.intercept
+                yesterday_trend_price = line.slope * (len(d) - 1) + line.intercept
+                if today_trend_price > d[-1].close:
+                    continue
+
+                trend_start_date = line.start_date
+                n_above = 0
+                for i, candlestick in enumerate(d):
+                    if candlestick.trade_date < trend_start_date or candlestick.trade_date > get_prev_trading_day(today):
+                        continue
+                    trend_price = line.slope * i + line.intercept
+                    if d[i].close >= trend_price:
+                        n_above += 1
+                if n_above < 2:
+                    is_breakout=True
+                print(n_above)
+            print(is_breakout)
             if (
                 d[-1].change_pct > 0
-                and (result := is_break_out(d))
-                and result.new_high_days > 5
-                and d[-1].close > a.high_price
-                and (float(d[-1].close) - a.high_price) / a.high_price < 0.05
+                and is_breakout==True
             ):
-                industry.result = result
-                industry.a = a
-                industry.b = b
-                industry.c = c
+                industry.trend_lines = trend_lines
                 selected_industries.append(industry)
-
+                print
+            
         selected_industries.sort(key=lambda ind: ind.change_pct, reverse=True)
+
         # 获取所有选中板块的成分股
         for industry in selected_industries:
             resultQueue.put(
-                BreakoutStrategyExecutingResult(
+                TrendBreakoutStrategyExecutingResult(
                     type="industry",
                     code=industry.code,
                     name=industry.name,
                     change_pct=float(industry.change_pct),
-                    result=BreakoutResult(
-                        is_break_out=industry.result.is_break_out,
-                        new_high_days=industry.result.new_high_days,
-                    ),
-                    rectangle_nearest=industry.a,
-                    rectangle_recent=industry.b,
-                    rectangle_large=industry.c,
+                    trend_lines=industry.trend_lines,
                 )
                 # f"突破板块: {industry.name}, {industry.change_pct}% {industry.result}"
             )  # 回发给客户端
@@ -358,7 +378,7 @@ def breakout(
 
                 d = [
                     Candlestick(
-                        date=data.trade_date,
+                        trade_date=data.trade_date,
                         open=data.open,
                         high=data.high,
                         low=data.low,
@@ -372,32 +392,47 @@ def breakout(
                 log.debug(
                     f"板块: {industry.name}, 股票: {stock.stock_code} {stock.stock_name} {len(d)}"
                 )
-                (a, b, c) = is_recent_flat_consolidation(d)
+
+                trend_lines = get_down_trend_line(d)
+                # 计算三根趋势线与当日价格，是否仅两日内突破该趋势线价格
+                # 即：近两日价格均位于趋势线之上，或仅当日价格位于趋势线之上，而趋势线内的其他K线均小于趋势线价格
+                today =  d[-1].trade_date
+                is_breakout = False
+                for line in trend_lines:
+                    today_trend_price = line.slope * (len(d) - 1) + line.intercept
+                    yesterday_trend_price = line.slope * (len(d) - 1) + line.intercept
+                    if today_trend_price > d[-1].close:
+                        continue
+
+                    trend_start_date = line.start_date
+                    n_above = 0
+                    for i, candlestick in enumerate(d):
+                        if candlestick.trade_date < trend_start_date or candlestick.trade_date > get_prev_trading_day(today):
+                            continue
+                        trend_price = line.slope * i + line.intercept
+                        if d[i].close >= trend_price:
+                            n_above += 1
+                    if n_above < 2:
+                        is_breakout=True
+                
                 if (
-                    a != None  # 要求6日内不能超过25
-                    and d[-1].close > a.high_price
-                    and (d[-1].close - a.high_price) / a.high_price < 0.06
-                    and (result := is_break_out(d))
-                    and result.new_high_days > 40
+                    d[-1].change_pct > 0
+                    and is_breakout==True
                 ):
                     resultQueue.put(
-                        BreakoutStrategyExecutingResult(
+                        TrendBreakoutStrategyExecutingResult(
                             type="stock",
                             code=stock.stock_code,
                             name=stock.stock_name,
                             change_pct=float(d[-1].change_pct),
-                            result=BreakoutResult(
-                                is_break_out=result.is_break_out,
-                                new_high_days=result.new_high_days,
-                            ),
-                            rectangle_nearest=a,
-                            rectangle_recent=b,
-                            rectangle_large=c,
+                            trend_lines=trend_lines
                         )
                     )
     finally:
         resultQueue.put(None)
 
 if __name__ == "__main__":
-    candlesticks = nk.get_stock_day_price("600268", start_date="20250623", end_date="20251125")
-    get_rise_trend_line(candlesticks)
+    resultQueue = queue.Queue()
+    print(breakout(resultQueue))
+    for i in range(0, resultQueue.qsize()):
+        print(resultQueue.get())
