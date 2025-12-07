@@ -44,7 +44,8 @@ interface BreakoutStrategyExecutingResult {
         end_date: string
         high_price: number
         low_price: number
-    }
+    },
+    trend_lines?: TrendLine[]
     reward?: Reward;
 }
 
@@ -55,8 +56,10 @@ export default function StrategyExecutionPage() {
     const [rewards, setRewards] = React.useState<Reward[]>([])
     const [candlesticks, setCandlesticks] = React.useState<Candlestick[]>([])
     const [rectangles, setRectangles] = React.useState<RectangleRegion[]>([])
+    const [trendLines, setTrendLines] = React.useState<TrendLine[]>([])
     const logRef = React.useRef(null)
     const [selectedTradeDate, setSelectedTradeDate] = React.useState<Dayjs>(dayjs(new Date()));
+    const [selectedStrategy, setSelectedStrategy] = React.useState('breakout_trend')
 
     const [selectedId, setSelectedId] = React.useState(-1)
 
@@ -74,9 +77,10 @@ export default function StrategyExecutionPage() {
         setResults([])
         setCandlesticks([])
         setRectangles([])
+        setTrendLines([])
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${process.env.NEXT_PUBLIC_PYSDK_HOST}/ws/breakout_execution`);
+        const ws = new WebSocket(`${protocol}//${process.env.NEXT_PUBLIC_PYSDK_HOST}/ws/${selectedStrategy}`);
         let batchResults: BreakoutStrategyExecutingResult[] = []
         let batchId: NodeJS.Timeout | null = null
         ws.onopen = () => {
@@ -216,8 +220,13 @@ export default function StrategyExecutionPage() {
                         pointB: { time: rect.end_date, price: rect.high_price }
                     })
                 }
-                console.log(tmp)
+                console.log(selectedResult.trend_lines)
                 setRectangles(tmp)
+                if (selectedResult.trend_lines !== undefined){
+                    setTrendLines([...selectedResult.trend_lines])
+                }else{
+                    setTrendLines([])
+                }
             } catch (exception) {
                 console.log(exception)
             }
@@ -265,8 +274,14 @@ export default function StrategyExecutionPage() {
                         pointB: { time: rect.end_date, price: rect.high_price }
                     })
                 }
-                console.log(tmp)
+                console.log(selectedResult.trend_lines)
+                console.log(results, newSelectedId, selectedResult)
                 setRectangles(tmp)
+                if (selectedResult.trend_lines !== undefined){
+                    setTrendLines([...selectedResult.trend_lines])
+                }else{
+                    setTrendLines([])
+                }
             } catch (exception) {
                 console.log(exception)
             }
@@ -294,14 +309,14 @@ export default function StrategyExecutionPage() {
                     <FormControl sx={{ marginRight: '8px', width: '30%' }} >
                         <InputLabel id="strategy-select-label-id">策略选择</InputLabel>
                         <Select
-                            defaultValue={0}
+                            value={selectedStrategy}
                             size='small'
                             labelId='strategy-select-label-id'
                             label="策略选择"
                         >
-                            <MenuItem value={0}>板块共振突破</MenuItem>
-                            <MenuItem value={20} disabled>平台突破</MenuItem>
-                            <MenuItem value={30} disabled>双突破</MenuItem>
+                            <MenuItem value='breakout_execution'>板块共振突破</MenuItem>
+                            <MenuItem value='breakout_v1_1_execution' >板块共振突破_v1.1</MenuItem>
+                            <MenuItem value='breakout_trend'>下降趋势线突破</MenuItem>
                         </Select>
                     </FormControl>
                     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='zh-cn'>
@@ -333,14 +348,17 @@ export default function StrategyExecutionPage() {
             </Paper>
             <Paper sx={{ width: '60%', borderLeft: '1px #505a5e solid', display: 'flex', flexDirection: 'column' }} square>
                 <Box sx={{ height: '70%' }}>
-                    <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} />
+                    <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine=>({
+                        startPoint: { time: trendLine.start_date, price: trendLine.low_price  },
+                        endPoint: { time: trendLine.end_date, price: trendLine.high_price  }
+                    }))} />
                 </Box>
                 <Box ref={logRef} sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
                     {
                         results.map((result, index) => {
                             return <Typography variant='body2' key={`log-${index}`}>
                                 {
-                                    `突破${(result.type === 'industry' ? '板块' : '个股')} ${result.code} ${result.name} + ${result.change_pct}% ${result.result.new_high_days}日新高`
+                                    `突破${(result.type === 'industry' ? '板块' : '个股')} ${result.code} ${result.name} + ${result.change_pct}%`
                                 }
                             </Typography>
                         })

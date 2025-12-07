@@ -5,7 +5,7 @@ import { Box, Container, Paper, Typography } from '@mui/material';
 import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries } from 'lightweight-charts';
 // TradingViewWidget.jsx
 import React, { useEffect, useRef, memo } from 'react';
-import TradingViewWidget, { Candlestick } from '@/components/TradingViewWidget_v2';
+import TradingViewWidget, { Candlestick, TrendLine } from '@/components/TradingViewWidget_v2';
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
 import { THSIndustryMarket, GetIndustriesResponse } from '../api/ths/getIndustries/route';
 import { GetIndustryStocksResponse } from '../api/ths/getIndustryStocks/route';
@@ -19,6 +19,7 @@ export default function Home() {
     const [selectedStock, setSelectedStock] = React.useState<number>(-1);
 
     const [candlesticks, setCandlesticks] = React.useState<Candlestick[]>([]);
+    const [trendLines, setTrendLines] = React.useState<TrendLine[]>([]);
 
     useEffect(() => {
 
@@ -61,6 +62,22 @@ export default function Home() {
                     }
                     let data = await response.json();
                     setCandlesticks(data.data);
+
+                    response = await fetch(`/api/pysdk/ths/getTrendLines?code=${industries[selectedIndustry].code}&start_date=20250601&end_date=${dayjs().format('YYYYMMDD')}`);
+                    if (!response.ok) {
+                        throw new Error('网络响应错误');
+                    }
+                    data = await response.json() ;
+                    setTrendLines(data.data.map((item:{start_date: string, end_date: string, high_price:number, low_price: number})  => ({
+                        startPoint: {
+                            time: dayjs(item.start_date).format("YYYY-MM-DD"),
+                            price: item.low_price
+                        },
+                        endPoint: {
+                            time: dayjs(item.end_date).format("YYYY-MM-DD"),
+                            price: item.high_price
+                        }
+                    })));
                     return;
                 }
 
@@ -81,6 +98,24 @@ export default function Home() {
                     volume: item.volume
                 }));
                 setCandlesticks(candlestickData);
+
+                response = await fetch(`/api/pysdk/stock/getTrendLines?code=${stockCode}&start_date=20250601&end_date=${dayjs().format('YYYYMMDD')}`);
+                if (!response.ok) {
+                    throw new Error('网络响应错误');
+                }
+                data = await response.json() ;
+                setTrendLines(data.data.map((item:{start_date: string, end_date: string, high_price:number, low_price: number})  => ({
+                    startPoint: {
+                        time: dayjs(item.start_date).format("YYYY-MM-DD"),
+                        price: item.low_price
+                    },
+                    endPoint: {
+                        time: dayjs(item.end_date).format("YYYY-MM-DD"),
+                        price: item.high_price
+                    }
+                })));
+
+
             } catch (error) {
                 console.error('获取数据失败:', error);
             }
@@ -184,7 +219,7 @@ export default function Home() {
 
                 </Paper>
                 <Paper sx={{ height: '60%', borderBottom: '1px black solid' }} square>
-                    <TradingViewWidget candlesticks={candlesticks} rectangles={[]} />
+                    <TradingViewWidget candlesticks={candlesticks} rectangles={[]} trendLines={trendLines} />
                 </Paper>
                 <Paper sx={{ height: '20%' }} square>
                     大盘数据

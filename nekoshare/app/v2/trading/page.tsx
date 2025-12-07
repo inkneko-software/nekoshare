@@ -111,7 +111,8 @@ export default function TradingPage() {
 
         async function fetchStockDayPrice() {
             try {
-                let stockCode = results[newSelectedId].code;
+                console.log(account.history, newSelectedId)
+                let stockCode = account.history[newSelectedId].code;
                 let response = await fetch('/api/pysdk/stock/getStockDayPrice?code=' + stockCode);
                 if (!response.ok) {
                     throw new Error('网络响应错误');
@@ -129,30 +130,6 @@ export default function TradingPage() {
                 }));
                 setCandlesticks(candlestickData);
                 let tmp: RectangleRegion[] = []
-                let selectedResult = results[newSelectedId]
-                if (selectedResult.rectangle_nearest !== undefined) {
-                    let rect = selectedResult.rectangle_nearest
-                    tmp.push({
-                        pointA: { time: rect.start_date, price: rect.low_price },
-                        pointB: { time: rect.end_date, price: rect.high_price }
-                    })
-                }
-                if (selectedResult.rectangle_recent !== undefined) {
-                    let rect = selectedResult.rectangle_recent
-                    console.log(rect, rect.start_date)
-                    tmp.push({
-                        pointA: { time: rect.start_date, price: rect.low_price },
-                        pointB: { time: rect.end_date, price: rect.high_price }
-                    })
-                }
-                if (selectedResult.rectangle_large !== undefined) {
-                    let rect = selectedResult.rectangle_large
-                    tmp.push({
-                        pointA: { time: rect.start_date, price: rect.low_price },
-                        pointB: { time: rect.end_date, price: rect.high_price }
-                    })
-                }
-                console.log(tmp)
                 setRectangles(tmp)
             } catch (exception) {
                 console.log(exception)
@@ -207,11 +184,7 @@ export default function TradingPage() {
                 console.log(exception)
             }
         }
-
-        if (results[newSelectedId].type === 'stock')
-            fetchStockDayPrice()
-        else
-            fetchIndustryDayPrice()
+        fetchStockDayPrice()
     }
 
     const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {

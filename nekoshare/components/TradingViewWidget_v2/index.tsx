@@ -8,7 +8,7 @@ import { PreOpenQualitiedResult } from '@/app/api/quantitative/getPreOpenQualifi
 import { RectangleDrawingTool } from './plugins/plugins/rectangle-drawing-tool/rectangle-drawing-tool';
 import RectangleButton from './RectangleButton';
 import HorizontalLineButton from './HorizontalLineButton';
-import TrendLineButton from './TrendLineButton';
+import TrendLineButton, { TrendLineDrawingTool } from './TrendLineButton';
 import DrawingTool from './DrawingTool';
 
 export interface Candlestick {
@@ -30,9 +30,15 @@ export interface RectangleRegion {
     pointB: Point
 }
 
+export interface TrendLine {
+    startPoint: Point;
+    endPoint: Point;
+}
+
 export interface TradingViewWidgetProps {
     candlesticks: Candlestick[];
-    rectangles: RectangleRegion[]
+    rectangles: RectangleRegion[];
+    trendLines?: TrendLine[];
 }
 
 
@@ -43,7 +49,7 @@ https://tradingview.github.io/lightweight-charts/tutorials/how_to/price-line 价
 https://tradingview.github.io/lightweight-charts/plugin-examples/ 趋势线与箱体
 */
 
-export default function TradingViewWidget({ candlesticks, rectangles }: TradingViewWidgetProps) {
+export default function TradingViewWidget({ candlesticks, rectangles, trendLines }: TradingViewWidgetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [chartApi, setChartApi] = useState<IChartApi | null>(null)
@@ -179,20 +185,37 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
 
             const drawingToolElement = document.querySelector<HTMLDivElement>("#drawing-tool")
             if (drawingToolElement !== null) {
-                const drawingTool = new RectangleDrawingTool(chart, candlestickSeries, document.querySelector<HTMLDivElement>("#drawing-tool")!, { showLabels: false })
+                const rectangleDrawingTool = new RectangleDrawingTool(chart, candlestickSeries, document.querySelector<HTMLDivElement>("#drawing-tool")!, { showLabels: false })
                 for (let rectangle of rectangles) {
-                    drawingTool.addNewRectangle(rectangle.pointA, rectangle.pointB)
+                    rectangleDrawingTool.addNewRectangle(rectangle.pointA, rectangle.pointB)
+                }
+
+                // const trendLineDrawingTool = new TrendLineDrawingTool(chart, candlestickSeries, ()=>{}, { showLabels: false });
+                // console.log('trendLines', trendLines);
+                // if (trendLines) {
+                //     for (let trendLine of trendLines) {
+                //         trendLineDrawingTool.addNewTrendLine(trendLine.startPoint, trendLine.endPoint)
+                //     }
+                // }
+                const trendLineDrawingTool = new TrendLineDrawingTool(chart, candlestickSeries, () => { }, { showLabels: false });
+                if (trendLines) {
+                    for (let trendLine of trendLines) {
+                        trendLineDrawingTool.addNewTrendLine(trendLine.startPoint, trendLine.endPoint)
+                    }
                 }
             }
 
             console.log(chart, candlestickSeries)
 
             return () => {
+                console.log('cleanup chart');
                 chart.remove();
                 if (containerRef.current) {
                     containerRef.current.removeChild(chartElement);
                     containerRef.current.onresize = null;
                 }
+
+
 
             };
         },
@@ -203,9 +226,9 @@ export default function TradingViewWidget({ candlesticks, rectangles }: TradingV
     return (
         <Box sx={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
             {
-                chartApi !== null && seriesApi !== null &&  <DrawingTool chart={chartApi} series={seriesApi}/>
+                chartApi !== null && seriesApi !== null && <DrawingTool chart={chartApi} series={seriesApi} />
             }
-            <Box id='drawing-tool' sx={{display: 'none'}} />
+            <Box id='drawing-tool' sx={{ display: 'none' }} />
             <Typography ref={tooltipRef} variant='caption' sx={{ display: 'none', margin: '8px 8px', position: 'absolute', right: 0, top: 0, zIndex: 100000 }} />
             <Box ref={containerRef} sx={{ flexGrow: 1, width: '100%' }} >
             </Box>

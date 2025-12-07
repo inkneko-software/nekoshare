@@ -105,6 +105,7 @@ export default function StrategyBacktracePage() {
     const [candlesticks, setCandlesticks] = React.useState<Candlestick[]>([])
     const [rectangles, setRectangles] = React.useState<RectangleRegion[]>([])
     const logRef = React.useRef(null)
+    const [selectedStrategyId, setSelectedStrategyId] = React.useState(0)
 
     const [selectedId, setSelectedId] = React.useState(-1)
     const [startTradeDate, setStartTradeDate] = React.useState<Dayjs>(dayjs("2025-10-09", "YYYY-MM-DD"));
@@ -125,7 +126,11 @@ export default function StrategyBacktracePage() {
         setRectangles([])
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${process.env.NEXT_PUBLIC_PYSDK_HOST}/ws/breakout_backtrace`);
+        const strategiesMap = new Map<number, string>([
+            [0, "breakout_backtrace"],
+            [1, "breakout_v1_1_backtrace"],
+        ])
+        const ws = new WebSocket(`${protocol}//${process.env.NEXT_PUBLIC_PYSDK_HOST}/ws/${strategiesMap.get(selectedStrategyId)}`);
         let batchResults: BreakoutStrategyExecutingResult[] = []
         let batchId: NodeJS.Timeout | null = null
         ws.onopen = () => {
@@ -270,13 +275,14 @@ export default function StrategyBacktracePage() {
                     <FormControl sx={{ marginRight: '8px', width: '30%' }} >
                         <InputLabel id="strategy-select-label-id">策略选择</InputLabel>
                         <Select
-                            defaultValue={0}
+                            value={selectedStrategyId}
                             size='small'
                             labelId='strategy-select-label-id'
                             label="策略选择"
+                            onChange={e=>setSelectedStrategyId(e.target.value)}
                         >
                             <MenuItem value={0}>板块共振突破</MenuItem>
-                            <MenuItem value={20} disabled>平台突破</MenuItem>
+                            <MenuItem value={1} >板块共振突破_v1.1</MenuItem>
                             <MenuItem value={30} disabled>双突破</MenuItem>
                         </Select>
                     </FormControl>
