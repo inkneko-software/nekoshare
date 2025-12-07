@@ -150,7 +150,7 @@ def _test_is_recent_flat_consolidation():
     )
     d = [
         Candlestick(
-            date=data.trade_date,
+            trade_date=data.trade_date,
             open=data.open,
             high=data.high,
             low=data.low,
@@ -222,7 +222,7 @@ def breakout(
 
             d = [
                 Candlestick(
-                    date=data.trade_date,
+                    trade_date=data.trade_date,
                     open=data.open,
                     high=data.high,
                     low=data.low,
@@ -290,7 +290,7 @@ def breakout(
 
                 d = [
                     Candlestick(
-                        date=data.trade_date,
+                        trade_date=data.trade_date,
                         open=data.open,
                         high=data.high,
                         low=data.low,

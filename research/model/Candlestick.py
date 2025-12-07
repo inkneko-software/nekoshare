@@ -4,7 +4,7 @@ from datetime import date
 
 @dataclass
 class Candlestick:
-    date: date
+    trade_date: date
     open: float
     high: float
     low: float
