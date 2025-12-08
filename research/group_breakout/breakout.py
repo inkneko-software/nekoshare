@@ -107,8 +107,8 @@ def is_recent_flat_consolidation(
     return [
         (
             Rectangle(
-                start_date=candlesticks[nearest_box[0]].date,
-                end_date=candlesticks[nearest_box[1]].date,
+                start_date=candlesticks[nearest_box[0]].trade_date,
+                end_date=candlesticks[nearest_box[1]].trade_date,
                 high_price=nearest_box[2],
                 low_price=nearest_box[3],
             )
@@ -117,8 +117,8 @@ def is_recent_flat_consolidation(
         ),
         (
             Rectangle(
-                start_date=candlesticks[recent_box[0]].date,
-                end_date=candlesticks[recent_box[1]].date,
+                start_date=candlesticks[recent_box[0]].trade_date,
+                end_date=candlesticks[recent_box[1]].datrade_datete,
                 high_price=recent_box[2],
                 low_price=recent_box[3],
             )
@@ -127,8 +127,8 @@ def is_recent_flat_consolidation(
         ),
         (
             Rectangle(
-                start_date=candlesticks[best_box[0]].date,
-                end_date=candlesticks[best_box[1]].date,
+                start_date=candlesticks[best_box[0]].trade_date,
+                end_date=candlesticks[best_box[1]].trade_date,
                 high_price=best_box[2],
                 low_price=best_box[3],
             )
