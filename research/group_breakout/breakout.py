@@ -118,7 +118,7 @@ def is_recent_flat_consolidation(
         (
             Rectangle(
                 start_date=candlesticks[recent_box[0]].trade_date,
-                end_date=candlesticks[recent_box[1]].datrade_datete,
+                end_date=candlesticks[recent_box[1]].trade_date,
                 high_price=recent_box[2],
                 low_price=recent_box[3],
             )
