@@ -313,6 +313,7 @@ export default function StrategyExecutionPage() {
                             size='small'
                             labelId='strategy-select-label-id'
                             label="策略选择"
+                            onChange={e=>setSelectedStrategy(e.target.value)}
                         >
                             <MenuItem value='breakout_execution'>板块共振突破</MenuItem>
                             <MenuItem value='breakout_v1_1_execution' >板块共振突破_v1.1</MenuItem>
