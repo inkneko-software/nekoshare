@@ -10,7 +10,7 @@ CREATE TABLE stock_data (
     `open` DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '开盘价，单位为元',
     high DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '最高价，单位为元',
     low DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '最低价，单位为元',
-    percent_change DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT '涨跌幅，单位为百分比',
+    percent_change DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '涨跌幅，单位为百分比',
     pre_close DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '前一日收盘价，单位为元',
     quantity_ratio DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '量比，单位为百分比',
     float_share DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '流通股本，单位为股',
@@ -32,7 +32,7 @@ CREATE TABLE stock_day_price (
     pre_close DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '前一日收盘价',
     volume bigint NOT NULL DEFAULT 0 COMMENT '成交量，单位为股',
     amount DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '成交额，单位为元',
-    percent_change DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT '涨跌幅，单位为百分比',
+    percent_change DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '涨跌幅，单位为百分比',
     close_at_limit_high TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否涨停，1表示是，0表示否',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
     PRIMARY KEY(stock_code, trade_date) COMMENT '索引：股票代码和交易日期组合索引，用于快速查询特定股票在某个日期的价格记录'
@@ -77,16 +77,17 @@ CREATE TABLE ths_industry_day_price (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE strategy_backtrace_task (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-    strategy_name VARCHAR(100) NOT NULL COMMENT '策略名称',
-    start_date DATE NOT NULL COMMENT '回测开始日期',
-    end_date DATE NOT NULL COMMENT '回测结束日期',
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态，如PENDING, RUNNING, COMPLETED, FAILED',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '任务创建时间',
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '任务最后更新时间'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- CREATE TABLE strategy_backtrace_task (
+--     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+--     strategy_name VARCHAR(100) NOT NULL COMMENT '策略名称',
+--     start_date DATE NOT NULL COMMENT '回测开始日期',
+--     end_date DATE NOT NULL COMMENT '回测结束日期',
+--     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态，如PENDING, RUNNING, COMPLETED, FAILED',
+--     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '任务创建时间',
+--     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '任务最后更新时间'
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 爬虫日志
 CREATE TABLE fetch_log(
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
     job_type ENUM('ths_industry_quote', 'tdx_stocks_quote') NOT NULL COMMENT '任务类型，同花顺行业实时日线/通达信实时日线',
@@ -94,3 +95,9 @@ CREATE TABLE fetch_log(
     msg TEXT NOT NULL COMMENT '日志信息',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE trade_account(
+    account_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '账户ID',
+    account_name VARCHAR(50) NOT NULL DEFAULT '模拟账户' COMMENT '账户名称',
+    
+)
