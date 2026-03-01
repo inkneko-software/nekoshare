@@ -207,6 +207,7 @@ def breakout(
         # end_date = date.today().strftime("%Y%m%d")
         # 获取所有行业板块
         industries = nk.get_ths_industry_market()
+        industries = [industry for industry in industries if industry.code.startswith("881")]
         selected_industries = []
         results = []
         for industry in industries:
