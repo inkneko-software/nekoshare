@@ -700,12 +700,14 @@ def get_stock_day_price(
         WHERE stock_code = %s
         """
         df_factor = pd.read_sql(sql + date_sql, engine, params=param)
-        df_merged = pd.merge(
-            df_k, df_factor, on=["stock_code", "trade_date"], how="inner"
-        )
-        base_factor = df_factor.adj_factor.iloc[-1]
+        df_merged = df_k
+        if len(df_factor) != 0:
+            df_merged = pd.merge(
+                df_k, df_factor, on=["stock_code", "trade_date"], how="inner"
+            )
+        
         for col in ["open", "high", "low", "close", "pre_close"]:
-            df_merged[col] = df_merged[col] * df_merged["adj_factor"] / base_factor
+            df_merged[col] = df_merged[col] * df_merged["adj_factor"] 
 
         return [
             StockDayPrice(
