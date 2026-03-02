@@ -3,22 +3,40 @@ nekoshare 基于K线形态的股票分析系统
 
 本系统的目标是选择符合特定K线形态的股票，并将其进行可视化展示，供使用者进行参考决策
 
-### 模型
+### 部署说明
 
-在沪深主板，流通市值大于30亿的范围内，满足以下条件之一：
+程序分为前后端，前端为Next.js，后端为Python，数据通过MySQL存储
 
-1.跳开形成的箱体形态突破：一定时间内平台箱体盘整，集合竞价跳开2%-5%，7日内最高价与最低价差价小于10%，多周期内高于当前集合竞价的日K线不超过N个
+项目使用Docker部署，共有三个Dockerfile文件，分别对应三个服务
 
-2.日K线级别的下降趋势突破，突破前期低点/突破高量点位/突破形态
+- 前端Next.js服务：nekoshare/Dockerfile
 
-3.箱体形态的突破边缘
+- 后端fastapi实现的数据接口服务 research/Dockerfile.api
 
-### 注意事项
+- 爬虫任务服务research/Dockerfile.fetch
 
-以日K线为时间单位，只在9点40分之前与14点50分之后操作
 
-只回测了3个月的数据，对于不同周期的市场环境，模型的适用性可能会发生变化
+通过根目录下的docker-compose.yml启动，配置通过环境变量传递，参考.env.development文件
 
-### 数据来源
+### 数据
 
-回测数据使用通达信提供的日线数据。后期如果考虑接入实时数据，目前考虑的是tushare，价格比较便宜，稳定性有待观察 https://tushare.pro/document/1?doc_id=290
+> 已更换为闭源的nekoshare-data，以下数据获取方式将不再维护
+
+数据分别为：
+
+1.通达信提供的`非复权沪深京股票日线数据`
+
+```
+data/download.sh下载日线数据包
+
+data/load.py将日线数据表导入到mysql
+```
+
+2.tushare提供的`复权因子`
+
+research/group_breakout/fetch.py中，函数`fetch_all_qfq_and_save`
+
+3.同花顺网页端提供的`行业板块日线数据`
+
+research/group_breakout/fetch.py中，函数`fetch_and_save`
+
