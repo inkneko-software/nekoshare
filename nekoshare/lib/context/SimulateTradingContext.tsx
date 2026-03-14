@@ -1,4 +1,5 @@
 'use client'
+import Decimal from "decimal.js";
 import { createContext, useContext, useEffect, useState } from "react";
 
 // 持仓
@@ -169,6 +170,11 @@ export function SimulateTradingContextProvider({ children }: { children: React.R
         if (!isEnabled || isPaused) {
             throw new Error('模拟交易未启用');
         }
+        
+
+        if (quantity <= 0) {
+            throw new Error('数量必须大于0');
+        }
 
         const trade_fee = getTradeFee(price * quantity);
 
@@ -180,9 +186,9 @@ export function SimulateTradingContextProvider({ children }: { children: React.R
         let found = false;
         setAccount(account => ({
             ...account,
-            balance: account.balance - trade_fee,
-            equity: account.equity + price * quantity,
-            available: account.available - price * quantity - trade_fee,
+            balance: new Decimal(account.balance).minus(trade_fee).toNumber(),
+            equity: new Decimal(account.equity).add((new Decimal(price)).mul(quantity)).toNumber(),
+            available: new Decimal(account.available).minus((new Decimal(price).mul(quantity))).minus(trade_fee).toNumber(),
             profit: account.profit - trade_fee,
             profitToday: account.profitToday - trade_fee,
             positions: account.positions.map(position => {
@@ -238,10 +244,11 @@ export function SimulateTradingContextProvider({ children }: { children: React.R
                         profit: 0 - trade_fee,
                         profitRatio: (0 - trade_fee) / (price * quantity - trade_fee) * 100,
                         cost: (price * quantity + trade_fee) / quantity,
-                        equity: price * quantity,
+                        equity: new Decimal(price).mul(quantity).toNumber(),
                     }
                 ]
             }));
+            console.log(new Decimal(price).mul(quantity).toNumber())
         }
     }
 

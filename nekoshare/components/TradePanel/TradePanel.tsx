@@ -21,13 +21,15 @@ export default function TradePanel() {
     const theme = useTheme();
     const [expand, setExpand] = React.useState(false);
     const [tabIndex, setTabIndex] = React.useState(2);
-    const {account, setAccount, isEnabled, startTradeDate, currentTradeDate, buy, sell} = useSimulateTradingContext()
+    const { account, setAccount, isEnabled, startTradeDate, currentTradeDate, buy, sell } = useSimulateTradingContext()
 
     const [code, setCode] = React.useState('');
     const [name, setName] = React.useState('');
-    const [isStockNotFound, setIsStockNotFound] = React.useState(true);
     const [price, setPrice] = React.useState(0);
     const [quantity, setQuantity] = React.useState(0);
+
+    const [codeErrorMsg, setCodeErrorMsg] = React.useState('');
+    const [quantityErrorMsg, setQuantityErrorMsg] = React.useState('');
     function a11yProps(index: number) {
         return {
             id: `simple-tab-${index}`,
@@ -39,8 +41,23 @@ export default function TradePanel() {
         setTabIndex(newValue);
     };
 
-    const handleBuy = ()=>{
-        buy(code, name, price, quantity)
+    const handleBuy = () => {
+        if (code === '' ){
+            setCodeErrorMsg('请输入股票代码');
+            return;
+        }
+
+        if (codeErrorMsg !== ''){
+            return;
+        }
+
+        try{
+            buy(code, name, price, quantity)
+        }catch (e) {
+            if (e instanceof Error){
+                setQuantityErrorMsg(e.message)
+            }
+        }
     }
 
     const handleCodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,19 +65,22 @@ export default function TradePanel() {
         async function getStockInfo() {
             const res = await fetch(`/api/stock/getStockBasics?stock_code=${event.target.value}`);
             if (!res.ok) {
+                setCodeErrorMsg('股票代码错误');
                 return;
             }
-            setIsStockNotFound(false); 
             const data = await res.json();
             const stockInfo = data;
             const stockPrice = stockInfo.price;
             setPrice(stockPrice);
             setName(stockInfo.stock_name);
+            setCodeErrorMsg('');
         }
 
         setCode(event.target.value);
         if (event.target.value.length === 6) {
             getStockInfo()
+        }else{
+            setCodeErrorMsg('股票代码错误');
         }
     };
 
@@ -69,12 +89,28 @@ export default function TradePanel() {
             setQuantity(0);
             return;
         }
+        const quantity = parseInt(event.target.value);
+        if (isNaN(quantity)){
+            setQuantity(0);
+            return;
+        }
         setQuantity(parseInt(event.target.value));
+
+        if (quantity !== 0 && quantity < 100){
+            setQuantityErrorMsg('交易数量至少为一手');
+            return;
+        }
+
+        if (quantity % 100 !== 0){
+            setQuantityErrorMsg('必须为100的倍数');
+            return;
+        }
+        setQuantityErrorMsg('');
     };
 
 
     return (
-        <Paper sx={[{ display: isEnabled ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', zIndex: '65535', borderRadius: '8px', width: '128px', height: '32px', position: 'absolute', bottom: 16, right: 16, transition: '0.3s ease-in-out', transitionProperty: 'width, height' }, expand && { width: '20%', height: '50%', background: '#303030', border: '1px white solid' }]}>
+        <Paper sx={[{ display: isEnabled ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', zIndex: '65535', borderRadius: '8px', width: '128px', height: '32px', position: 'absolute', bottom: 16, right: 16, transition: '0.3s ease-in-out', transitionProperty: 'width, height' }, expand && { width: '20%', height: '50%', minWidth: '392px', minHeight: '496px', background: '#303030', border: '1px white solid' }]}>
             {
                 !expand && <Button sx={{ backgroundColor: '#25509f', color: 'white', width: '128px', height: '32px', position: 'relative', bottom: 0, right: 0 }} onClick={() => setExpand(true)}>
                     <HistoryOutlinedIcon sx={{ mr: 1 }} />
@@ -110,16 +146,16 @@ export default function TradePanel() {
                             tabIndex === 0 && (
                                 <Box sx={{ display: 'flex', margin: ' 8px 8px' }}>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', width: '50%' }}>
-                                        <TextField size='small' label='股票代码' value={code} onChange={handleCodeChange} sx={{ margin: '8px 8px' }} error helperText="请输入正确代码" />
-                                        <TextField size='small' label='买入数量' value={quantity} onChange={handleQuantityChange} sx={{ margin: '8px 8px'  }} error helperText="请输入正确数量" />
-                                        <TextField size='small' label='买入价格' value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} disabled sx={{ margin: '8px 8px' }} />
+                                        <TextField size='small' autoComplete="off" label='股票代码' value={code} onChange={handleCodeChange} sx={{ margin: '8px 8px' }} error={codeErrorMsg !== ''} helperText={codeErrorMsg !== '' ? codeErrorMsg : name} />
+                                        <TextField size='small' autoComplete="off" label='买入数量' value={quantity} onChange={handleQuantityChange} sx={{ margin: '8px 8px' }} error={quantityErrorMsg !== ''} helperText={quantityErrorMsg} />
+                                        <TextField size='small' autoComplete="off" label='买入价格' value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} disabled sx={{ margin: '8px 8px' }} />
                                     </Box>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', width: '50%' }}>
-                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`可用 ${account.available}`}</Typography>
-                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`可买 ${account.available / price}`}</Typography>
-                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`买入市值 ${price * quantity}`}</Typography>
+                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`可用 ${account.available.toFixed(2)}`}</Typography>
+                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`可买 ${price === 0 ? 0 : Math.floor(account.available / price / 100) * 100} (股)`}</Typography>
+                                        <Typography variant="body2" sx={{ margin: '8px 8px' }}>{`买入市值 ${(price * quantity).toFixed(2)}`}</Typography>
                                         <Button variant="contained" sx={{ margin: '8px 8px', marginTop: 'auto', 'backgroundColor': '#ff2e2e', color: 'white' }} size="small"
-                                         onClick={handleBuy}>买入</Button>
+                                            onClick={handleBuy}>买入</Button>
                                     </Box>
 
                                 </Box>
@@ -171,7 +207,7 @@ export default function TradePanel() {
                                             <Typography variant='body2' fontWeight={'bold'}>100000.00</Typography>
                                         </Box>
                                         <Box sx={{ width: '33%', display: 'flex', flexDirection: 'column' }}>
-                                        <Typography variant='button' sx={{ color: '#2587e4', cursor: 'pointer' }} onClick={() => { }}>{"下一日>"}</Typography>
+                                            <Typography variant='button' sx={{ color: '#2587e4', cursor: 'pointer' }} onClick={() => { }}>{"下一日>"}</Typography>
 
                                             <Typography variant='button' sx={{ color: '#2587e4', cursor: 'pointer' }} onClick={() => { }}>{"查看BS点>"}</Typography>
                                         </Box>
@@ -187,7 +223,7 @@ export default function TradePanel() {
             {
                 expand && (
                     <TableContainer sx={{ overflow: 'auto' }}>
-                        <Table size='small' sx={{ tableLayout: 'fixed'}}>
+                        <Table size='small' sx={{ tableLayout: 'fixed' }}>
                             <TableHead>
                                 <TableRow>
 
@@ -196,32 +232,32 @@ export default function TradePanel() {
                                     <TableCell>持仓/可用</TableCell>
                                     <TableCell>成本/现价</TableCell>
                                 </TableRow>
-                                
+
                             </TableHead>
-                            <TableBody> 
-                                    {
-                                        account.positions.map((item, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell>
-                                                    <Typography variant='body2'>{item.name}</Typography>
-                                                    <Typography variant='body2'>{item.equity}</Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant='body2'>{item.profit}</Typography>
-                                                    <Typography variant='body2'>{item.profitRatio}</Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant='body2'>{item.quantity}</Typography>
-                                                    <Typography variant='body2'>{item.avilableQuantity}</Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant='body2'>{item.cost}</Typography>
-                                                    <Typography variant='body2'>{item.price}</Typography>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))  
-                                    }
-                                </TableBody>
+                            <TableBody>
+                                {
+                                    account.positions.map((item, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>
+                                                <Typography variant='body2'>{item.name}</Typography>
+                                                <Typography variant='body2'>{item.equity.toFixed(2)}</Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant='body2'>{item.profit.toFixed(2)}</Typography>
+                                                <Typography variant='body2'>{Math.round(item.profitRatio * 1000) / 1000}%</Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant='body2'>{item.quantity}</Typography>
+                                                <Typography variant='body2'>{item.avilableQuantity}</Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant='body2'>{Math.round(item.cost * 1000) / 1000}</Typography>
+                                                <Typography variant='body2'>{item.price}</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                }
+                            </TableBody>
                         </Table>
                     </TableContainer>
 
