@@ -28,18 +28,18 @@ export default function FetchStatus() {
         }
     }
 
-    useEffect(() => {
-        if (window === undefined) {
-            return;
-        }
-        getFetchStatus()
-        const timer = setInterval(() => {
-            getFetchStatus()
-        }, 10000);
+    // useEffect(() => {
+    //     if (window === undefined) {
+    //         return;
+    //     }
+    //     getFetchStatus()
+    //     const timer = setInterval(() => {
+    //         getFetchStatus()
+    //     }, 10000);
 
-        return () => clearInterval(timer);
-    }
-    , []);
+    //     return () => clearInterval(timer);
+    // }
+    // , []);
 
     return (
         <>
