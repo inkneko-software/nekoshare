@@ -219,7 +219,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             };
         },
-        [containerRef.current, candlesticks]
+        [containerRef.current, candlesticks, trendLines]
 
     );
 
