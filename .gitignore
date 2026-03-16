@@ -5,3 +5,4 @@ research/chrome-linux64
 research/chromedriver-linux64
 research/**/__pycache__/
 hsjday.zip
+.env.production
