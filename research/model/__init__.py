@@ -6,6 +6,8 @@ from .BreakoutStrategyExecutingResult import BreakoutStrategyExecutingResult
 from .ProfitResult import ProfitResult
 from .TrendLine import TrendLine
 from .TrendBreakoutStrategyExecutingResult import TrendBreakoutStrategyExecutingResult
+from .PressurePoint import PressurePoint
+from .VolumeBreakoutStrategyExecutingResult import VolumeBreakoutStrategyExecutingResult
 
 __all__ = [
     "Candlestick",
@@ -16,4 +18,6 @@ __all__ = [
     "ProfitResult",
     "TrendLine",
     "TrendBreakoutStrategyExecutingResult",
+    "PressurePoint",
+    "VolumeBreakoutStrategyExecutingResult",
 ]
