@@ -368,7 +368,7 @@ def high_volume_breakout_backtrace(
 
 if __name__ == "__main__":
     resultQueue = queue.Queue()
-    high_volume_breakout(resultQueue, volume_percentile=5)
+    high_volume_breakout(resultQueue, volume_percentile=5, start_date="20240901", end_date="20260325")
     log.info(f"高量突破策略执行完成，结果数量: {resultQueue.qsize()}")
     # 处理结果
     # item = resultQueue.get()
