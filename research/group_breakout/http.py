@@ -7,6 +7,7 @@ import uvicorn
 import group_breakout.fetch as nk
 from group_breakout.breakout import *
 from group_breakout.strategies.breakout_v1_1 import *
+from group_breakout.strategies.high_volume_breakout import *
 import queue
 import asyncio
 import group_breakout.trade_day as trade_day
@@ -236,6 +237,23 @@ def add(code: str, start_date: str = "20140101", end_date: str = None):
     trend_lines = get_down_trend_line(candlesticks)
     return {"data": trend_lines}
 
+
+@app.websocket("/ws/volume_breakout_execution")
+async def websocket_endpoint(websocket: WebSocket):
+    # 接受客户端连接
+    await websocket.accept()
+    data = await websocket.receive_json()
+    timeRange = TimeRange(**data)
+
+    resultQueue: queue.Queue[VolumeBreakoutStrategyExecutingResult] = queue.Queue()
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, high_volume_breakout, resultQueue, timeRange.start_date, timeRange.end_date)
+    while True:
+        msg = await asyncio.to_thread(resultQueue.get)
+        if msg == None:
+            break
+        await websocket.send_text(msg.model_dump_json())
+    await websocket.close()
 
 
 if __name__ == "__main__":
