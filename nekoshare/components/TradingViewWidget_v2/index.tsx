@@ -10,6 +10,7 @@ import RectangleButton from './RectangleButton';
 import HorizontalLineButton from './HorizontalLineButton';
 import TrendLineButton, { TrendLineDrawingTool } from './TrendLineButton';
 import DrawingTool from './DrawingTool';
+import PressurePoint from '@/lib/PressurePoint';
 
 export interface Candlestick {
     time: string;
@@ -39,6 +40,8 @@ export interface TradingViewWidgetProps {
     candlesticks: Candlestick[];
     rectangles: RectangleRegion[];
     trendLines?: TrendLine[];
+    pressurePoints?: PressurePoint[];
+    //考虑整合突破结果
 }
 
 
@@ -49,7 +52,7 @@ https://tradingview.github.io/lightweight-charts/tutorials/how_to/price-line 价
 https://tradingview.github.io/lightweight-charts/plugin-examples/ 趋势线与箱体
 */
 
-export default function TradingViewWidget({ candlesticks, rectangles, trendLines }: TradingViewWidgetProps) {
+export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints }: TradingViewWidgetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [chartApi, setChartApi] = useState<IChartApi | null>(null)
@@ -201,6 +204,18 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                 if (trendLines) {
                     for (let trendLine of trendLines) {
                         trendLineDrawingTool.addNewTrendLine(trendLine.startPoint, trendLine.endPoint)
+                    }
+                }
+                if (pressurePoints) {
+                    for (let pressurePoint of pressurePoints) {
+                        const priceLine = candlestickSeries?.createPriceLine({
+                            price: pressurePoint.price,
+                            color: '#ff0400',
+                            lineWidth: 1,
+                            lineStyle: LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: `压力位 ${pressurePoint.trade_date}`,
+                        });
                     }
                 }
             }

@@ -1,7 +1,7 @@
 'use client'
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
 import TradingViewWidget, { Candlestick, RectangleRegion } from '@/components/TradingViewWidget_v2';
-import { Box, Button, FormControl, InputLabel, MenuItem, Paper, Select, TextField, Typography } from '@mui/material';
+import { Box, Button, FormControl, FormControlLabel, FormGroup, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -11,6 +11,7 @@ import React from 'react';
 import BackTracePriceTable from '@/components/BacktracePriceTable/BacktracePriceTable';
 import StockDayPrice from '@/lib/StockDayPrice';
 import THSIndustryDayPrice from '@/lib/THSIndustryDayPrice';
+import PressurePoint from '@/lib/PressurePoint';
 
 interface Reward {
     afterDay: number
@@ -45,7 +46,8 @@ interface BreakoutStrategyExecutingResult {
         high_price: number
         low_price: number
     },
-    trend_lines?: TrendLine[]
+    trend_lines?: TrendLine[];
+    pressure_points?: PressurePoint[];
     reward?: Reward;
 }
 
@@ -57,9 +59,10 @@ export default function StrategyExecutionPage() {
     const [candlesticks, setCandlesticks] = React.useState<Candlestick[]>([])
     const [rectangles, setRectangles] = React.useState<RectangleRegion[]>([])
     const [trendLines, setTrendLines] = React.useState<TrendLine[]>([])
+    const [pressurePoints, setPressurePoints] = React.useState<PressurePoint[]>([])
     const logRef = React.useRef(null)
     const [selectedTradeDate, setSelectedTradeDate] = React.useState<Dayjs>(dayjs(new Date()));
-    const [selectedStrategy, setSelectedStrategy] = React.useState('breakout_trend')
+    const [selectedStrategy, setSelectedStrategy] = React.useState('volume_breakout_execution')
 
     const [selectedId, setSelectedId] = React.useState(-1)
 
@@ -227,6 +230,9 @@ export default function StrategyExecutionPage() {
                 }else{
                     setTrendLines([])
                 }
+                if (selectedResult.pressure_points !== undefined){
+                    setPressurePoints([...selectedResult.pressure_points])
+                }
             } catch (exception) {
                 console.log(exception)
             }
@@ -282,6 +288,8 @@ export default function StrategyExecutionPage() {
                 }else{
                     setTrendLines([])
                 }
+
+
             } catch (exception) {
                 console.log(exception)
             }
@@ -316,7 +324,7 @@ export default function StrategyExecutionPage() {
                             onChange={e=>setSelectedStrategy(e.target.value)}
                         >
                             <MenuItem value='breakout_execution'>板块共振突破</MenuItem>
-                            <MenuItem value='breakout_v1_1_execution' >板块共振突破_v1.1</MenuItem>
+                            <MenuItem value='volume_breakout_execution' >量能突破</MenuItem>
                             <MenuItem value='breakout_trend'>下降趋势线突破</MenuItem>
                         </Select>
                     </FormControl>
@@ -331,6 +339,25 @@ export default function StrategyExecutionPage() {
                     </LocalizationProvider>
                     <Button variant='outlined' onClick={handleExecute} disabled={isExecuting} sx={{ flexGrow: 1, width: '30%' }}>执行</Button>
                 </Box>
+                {/* <Box sx={{ display: 'flex', padding: '8px 8px', marginTop: '8px' }}>
+                    <FormControl sx={{ marginRight: '8px', width: '30%' }} >
+                        <InputLabel id="strategy-select-label-id">股池选择</InputLabel>
+                        <Select
+                            value={selectedStrategy}
+                            size='small'
+                            labelId='strategy-select-label-id'
+                            label="股池选择"
+                            onChange={e=>setSelectedStrategy(e.target.value)}
+                        >
+                            <MenuItem value='breakout_execution'>行业板块</MenuItem>
+                            <MenuItem value='breakout_v1_1_execution' >概念板块</MenuItem>
+                            <MenuItem value='breakout_trend'>自选</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <FormGroup sx={{ margin: '0px 8px', width: '30%' }}>
+                        <FormControlLabel control={<Switch  />} label={'计算收益'} />
+                    </FormGroup>
+                 </Box> */}
                 <BackTracePriceTable
                     enableBackTrace
                     columnNames={['', '名称', '涨幅(%)', '次日', '三日', '五日']}
@@ -352,7 +379,7 @@ export default function StrategyExecutionPage() {
                     <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine=>({
                         startPoint: { time: trendLine.start_date, price: trendLine.low_price  },
                         endPoint: { time: trendLine.end_date, price: trendLine.high_price  }
-                    }))} />
+                    }))} pressurePoints={pressurePoints} />
                 </Box>
                 <Box ref={logRef} sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
                     {
