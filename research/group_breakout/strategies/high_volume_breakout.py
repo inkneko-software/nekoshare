@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from group_breakout.trade_day import get_prev_trading_day, get_next_trading_day, is_trading_day
 from group_breakout import trade_day
+from decimal import Decimal, ROUND_HALF_UP
 
 from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
@@ -138,22 +139,30 @@ def is_high_volume_breakout(
     threshold_low = max([c.low for c in reference_candlesticks])
     threshold = max(threshold_open, threshold_low)
     
-    # 1. 判断高量K突破条件是否满足
+    # 当天一字板 / 涨停直接忽略
+    if (candlesticks[-1].open == candlesticks[-1].close) or candlesticks[-1].change_pct > 9:
+        return False, []
+
+    # 判断高量K突破条件是否满足
     if current_close < threshold:
         return False, []
     
-    log.info(
-            f"高量突破条件满足: 当日收盘价 {current_close} > "
-            f"参考K线的最高开盘价和最低价 {threshold}"
-        )
-    log.info(f"参考K线数量: {len(reference_candlesticks)}")
-
-    # 2. 拉取附近7天的价格，判断是否突破
+    # 拉取附近7天的价格，判断是否突破
     recent_week_candlesticks = [max(c.open, c.close) for c in candlesticks[-28:-1]]
     if current_close < max(recent_week_candlesticks):
         return False, []
 
-    # 3. 依据参考K线构建压力点列表（可按业务需求调整price）
+    # 判断近7天涨幅是否过高（判断是否已经是连板票）
+    recent_7_days = candlesticks[-7:-1]
+    low_price = min([c.low for c in recent_7_days])
+    high_price = max([c.high for c in recent_7_days])
+    if (high_price - low_price) / low_price > 0.20:
+        return False, []
+
+    # 忽略前期爆量近期无量的票
+    if (current_close - threshold ) / threshold > 0.2:
+        return False, []
+    
     pressure_points = [
         PressurePoint(trade_date=str(c.trade_date), price=c.high)
         for c in reference_candlesticks
