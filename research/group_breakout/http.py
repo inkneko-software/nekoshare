@@ -247,7 +247,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
     resultQueue: queue.Queue[VolumeBreakoutStrategyExecutingResult] = queue.Queue()
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, high_volume_breakout, resultQueue, timeRange.start_date, timeRange.end_date)
+    two_years_ago = (datetime.strptime(timeRange.end_date, "%Y%m%d") - relativedelta(years=1) - relativedelta(days=180)).strftime("%Y%m%d")
+
+    loop.run_in_executor(None, high_volume_breakout, resultQueue, two_years_ago, timeRange.end_date)
     while True:
         msg = await asyncio.to_thread(resultQueue.get)
         if msg == None:
