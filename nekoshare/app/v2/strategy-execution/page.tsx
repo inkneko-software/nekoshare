@@ -12,6 +12,7 @@ import BackTracePriceTable from '@/components/BacktracePriceTable/BacktracePrice
 import StockDayPrice from '@/lib/StockDayPrice';
 import THSIndustryDayPrice from '@/lib/THSIndustryDayPrice';
 import PressurePoint from '@/lib/PressurePoint';
+import { getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
 
 interface Reward {
     afterDay: number
@@ -88,7 +89,11 @@ export default function StrategyExecutionPage() {
         let batchId: NodeJS.Timeout | null = null
         ws.onopen = () => {
             console.log("连接成功");
-            ws.send(JSON.stringify({ end_date: selectedTradeDate.format("YYYYMMDD"), start_date: selectedTradeDate.subtract(3, 'month').format("YYYYMMDD") }));
+            if (selectedStrategy === 'volume_breakout_execution') {
+                ws.send(JSON.stringify({ end_date: selectedTradeDate.format("YYYYMMDD"), start_date: selectedTradeDate.subtract(18, 'month').format("YYYYMMDD") }));
+            } else {
+                ws.send(JSON.stringify({ end_date: selectedTradeDate.format("YYYYMMDD"), start_date: selectedTradeDate.subtract(3, 'month').format("YYYYMMDD") }));
+            }
             batchId = setInterval(() => {
                 setResults([...batchResults]);
             }, 1000);
@@ -379,7 +384,7 @@ export default function StrategyExecutionPage() {
                     <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine=>({
                         startPoint: { time: trendLine.start_date, price: trendLine.low_price  },
                         endPoint: { time: trendLine.end_date, price: trendLine.high_price  }
-                    }))} pressurePoints={pressurePoints} />
+                    }))} pressurePoints={pressurePoints} highlightDate={getLatestTradingDay(selectedTradeDate).format("YYYY-MM-DD")}/>
                 </Box>
                 <Box ref={logRef} sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
                     {

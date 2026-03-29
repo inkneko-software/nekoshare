@@ -41,6 +41,7 @@ export interface TradingViewWidgetProps {
     rectangles: RectangleRegion[];
     trendLines?: TrendLine[];
     pressurePoints?: PressurePoint[];
+    highlightDate?: string;
     //考虑整合突破结果
 }
 
@@ -52,7 +53,7 @@ https://tradingview.github.io/lightweight-charts/tutorials/how_to/price-line 价
 https://tradingview.github.io/lightweight-charts/plugin-examples/ 趋势线与箱体
 */
 
-export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints }: TradingViewWidgetProps) {
+export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints, highlightDate }: TradingViewWidgetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [chartApi, setChartApi] = useState<IChartApi | null>(null)
@@ -125,7 +126,9 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                 open: item.open,
                 high: item.high,
                 low: item.low,
-                close: item.close
+                close: item.close,
+                borderColor: highlightDate === item.time ? '#e2d628' : undefined,
+                wickColor: highlightDate === item.time ? '#e2d628' : undefined,
             }));
 
             candlestickSeries.setData(dayPrice);
@@ -141,7 +144,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
             const volumeData = candlesticks.map((item) => ({
                 time: item.time,
                 value: item.volume,
-                color: item.close - item.open > 0 ? '#ec3a37' : '#0093ad'
+                color:  item.close - item.open > 0 ? '#ec3a37' : '#0093ad'
             }));
 
             histogramSeries.setData(volumeData);
