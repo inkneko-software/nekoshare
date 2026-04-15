@@ -8,7 +8,8 @@ from dateutil.relativedelta import relativedelta
 from group_breakout.trade_day import get_prev_trading_day, get_next_trading_day, is_trading_day
 from group_breakout import trade_day
 from decimal import Decimal, ROUND_HALF_UP
-
+import concurrent.futures
+import time
 from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
 
@@ -190,64 +191,76 @@ def high_volume_breakout(
         # 获取所有行业板块
         industries = nk.get_ths_industry_market()
         industries = [ind for ind in industries if ind.code.startswith("881")]
-        
-        # 遍历所有行业板块的成分股
+        stocks = set()
+
         for industry in industries:
             # 获取板块的成分股
-            stocks = nk.get_ths_industry_stocks(industry.code)
-            for stock in stocks:
-                # 只做主板
-                if not stock.stock_code.startswith(("6", "0")) or stock.stock_code.startswith("688"):
-                    continue
-                if stock.stock_name.startswith(("*", "ST", "退", "N", "C")):
-                    continue
+            stocks.update(nk.get_ths_industry_stocks(industry.code))
+        def process_stock(stock):
+            # 只做主板
+            if not stock.stock_code.startswith(("6", "0")) or stock.stock_code.startswith("688"):
+                return None
+            if stock.stock_name.startswith(("*", "ST", "退", "N", "C")):
+                return None
 
-                # log.info(f"处理股票: {stock.stock_code} {stock.stock_name}")
+            # log.info(f"处理股票: {stock.stock_code} {stock.stock_name}")
 
-                # 获取股票近两年的数据
-                ret_day = nk.get_stock_day_price(
+            # 获取股票近两年的数据
+            ret_day = nk.get_stock_day_price(
+                code=stock.stock_code,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            if ret_day is None or len(ret_day) == 0 or ret_day[-1].percent_change <= 1:
+                return None
+            
+            if len(ret_day) < 30:
+                return None
+            
+            # 转换为Candlestick对象
+            candlesticks = [
+                Candlestick(
+                    trade_date=data.trade_date,
+                    open=data.open,
+                    high=data.high,
+                    low=data.low,
+                    close=data.close,
+                    volume=data.volume,
+                    change_pct=data.percent_change,
+                    pre_close=data.pre_close,
+                )
+                for data in ret_day
+            ]
+            
+            # 检查是否是高量突破，并同时获取压力点
+            is_breakout, pressure_points = is_high_volume_breakout(
+                candlesticks, volume_percentile
+            )
+            if is_breakout:
+                log.info(f"高量突破: {stock.stock_code} {stock.stock_name}, 涨幅: {candlesticks[-1].change_pct:.2f}%, 压力点: {pressure_points}")
+                return VolumeBreakoutStrategyExecutingResult(
+                    type="stock",
                     code=stock.stock_code,
-                    start_date=start_date,
-                    end_date=end_date,
+                    name=stock.stock_name,
+                    change_pct=float(candlesticks[-1].change_pct),
+                    pressure_points=pressure_points,
                 )
+            
 
-                if ret_day is None or len(ret_day) == 0 or ret_day[-1].percent_change <= 1:
-                    continue
-                
-                if len(ret_day) < 30:
-                    continue
-                
-                # 转换为Candlestick对象
-                candlesticks = [
-                    Candlestick(
-                        trade_date=data.trade_date,
-                        open=data.open,
-                        high=data.high,
-                        low=data.low,
-                        close=data.close,
-                        volume=data.volume,
-                        change_pct=data.percent_change,
-                        pre_close=data.pre_close,
-                    )
-                    for data in ret_day
-                ]
-                
-                # 检查是否是高量突破，并同时获取压力点
-                is_breakout, pressure_points = is_high_volume_breakout(
-                    candlesticks, volume_percentile
-                )
-                if is_breakout:
-                    resultQueue.put(
-                        VolumeBreakoutStrategyExecutingResult(
-                            type="stock",
-                            code=stock.stock_code,
-                            name=stock.stock_name,
-                            change_pct=float(candlesticks[-1].change_pct),
-                            pressure_points=pressure_points,
-                        )
-                    )
-                    log.info(f"高量突破: {stock.stock_code} {stock.stock_name}, 涨幅: {candlesticks[-1].change_pct:.2f}%, 压力点: {pressure_points}")
-    
+        run_start_time = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            future_results = {executor.submit(process_stock, stock): stock for stock in stocks}
+            for future in concurrent.futures.as_completed(future_results):
+                result = future_results[future]
+                try:
+                    data = future.result()
+                    if data is not None:
+                        resultQueue.put(data)
+                except Exception as exc:
+                    log.error(f"处理股票 {result.stock_code} {result.stock_name} 时发生错误: {exc}")
+        log.info(f"耗时: {time.time() - run_start_time:.2f}s")
+            
     finally:
         resultQueue.put(None)
 
@@ -377,7 +390,9 @@ def high_volume_breakout_backtrace(
 
 if __name__ == "__main__":
     resultQueue = queue.Queue()
-    high_volume_breakout(resultQueue, volume_percentile=5, start_date="20240901", end_date="20260325")
+    end_date = "20260325"
+    two_years_ago = (datetime.strptime(end_date, "%Y%m%d") - relativedelta(years=1) - relativedelta(days=180)).strftime("%Y%m%d")
+    high_volume_breakout(resultQueue, volume_percentile=5, start_date=two_years_ago, end_date=end_date)
     log.info(f"高量突破策略执行完成，结果数量: {resultQueue.qsize()}")
     # 处理结果
     # item = resultQueue.get()
