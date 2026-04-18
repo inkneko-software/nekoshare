@@ -13,6 +13,7 @@ import StockDayPrice from '@/lib/StockDayPrice';
 import THSIndustryDayPrice from '@/lib/THSIndustryDayPrice';
 import PressurePoint from '@/lib/PressurePoint';
 import { getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
+import { isTradingDay } from '../../../lib/chinese-holidays/TradingDays';
 
 interface Reward {
     afterDay: number
@@ -384,7 +385,7 @@ export default function StrategyExecutionPage() {
                     <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine=>({
                         startPoint: { time: trendLine.start_date, price: trendLine.low_price  },
                         endPoint: { time: trendLine.end_date, price: trendLine.high_price  }
-                    }))} pressurePoints={pressurePoints} highlightDate={getLatestTradingDay(selectedTradeDate).format("YYYY-MM-DD")}/>
+                    }))} pressurePoints={pressurePoints} highlightDate={ (isTradingDay(selectedTradeDate) ? selectedTradeDate : getLatestTradingDay(selectedTradeDate)).format("YYYY-MM-DD")}/>
                 </Box>
                 <Box ref={logRef} sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
                     {
