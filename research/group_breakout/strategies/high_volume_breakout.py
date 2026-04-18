@@ -18,7 +18,7 @@ log = LoggerFactory.get_logger(__name__)
 
 基于近两年的日K线数据，寻找成交量靠前(通过变量指定，默认前5%)的交易日，以这些日K线的开盘、收盘、最高价、最低价作为买入与卖出的依据
 
-首先对K线以成交量为依据进行排序，选出前5%高成交量的K线。在这些K线中，以成交量作为第一次要权重，以min(开盘价,收盘价)作为主要权重，权重大小与数值成正比
+首先对K线以成交量为依据进行排序，选出前5%高成交量的K线。在这些K线中，以成交量作为第一次要权重，以最高价作为主要权重，权重大小与数值成正比
 
 然后再以交易日作为第二权重，选出这5%中的min(8, len(5%高量K线))根K线，作为突破的参考依据
 
@@ -135,13 +135,11 @@ def is_high_volume_breakout(
     
     current_close = candlesticks[-1].close
     
-    # 当日收盘价需要超过参考K线中的最高开盘价和最低价
-    threshold_open = max([c.open for c in reference_candlesticks])
-    threshold_low = max([c.low for c in reference_candlesticks])
-    threshold = max(threshold_open, threshold_low)
+    # 当日收盘价需要超过参考K线中的最高价
+    threshold = max([c.high for c in reference_candlesticks])
     
-    # 当天一字板 / 涨停直接忽略
-    if (candlesticks[-1].open == candlesticks[-1].close) or candlesticks[-1].change_pct > 9:
+    # 当天高开大于5%，直接忽略
+    if (candlesticks[-1].open - candlesticks[-1].pre_close ) / candlesticks[-1].pre_close > 0.05:
         return False, []
 
     # 判断高量K突破条件是否满足
@@ -161,7 +159,7 @@ def is_high_volume_breakout(
         return False, []
 
     # 忽略前期爆量近期无量的票
-    if (current_close - threshold ) / threshold > 0.2:
+    if (current_close - threshold ) / threshold > 0.12:
         return False, []
     
     pressure_points = [
@@ -196,6 +194,12 @@ def high_volume_breakout(
         for industry in industries:
             # 获取板块的成分股
             stocks.update(nk.get_ths_industry_stocks(industry.code))
+
+        # 用于调试
+        # for stock in stocks:
+        #     if stock.stock_code == "000655":
+        #         stocks = [stock]
+        #         break
         def process_stock(stock):
             # 只做主板
             if not stock.stock_code.startswith(("6", "0")) or stock.stock_code.startswith("688"):
@@ -212,7 +216,8 @@ def high_volume_breakout(
                 end_date=end_date,
             )
 
-            if ret_day is None or len(ret_day) == 0 or ret_day[-1].percent_change <= 1:
+
+            if ret_day is None or len(ret_day) == 0 or ret_day[-1].percent_change <= 0:
                 return None
             
             if len(ret_day) < 30:
