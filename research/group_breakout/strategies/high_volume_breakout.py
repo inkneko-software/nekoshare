@@ -10,6 +10,7 @@ from group_breakout import trade_day
 from decimal import Decimal, ROUND_HALF_UP
 import concurrent.futures
 import time
+import pandas as pd
 from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
 
@@ -36,6 +37,8 @@ log = LoggerFactory.get_logger(__name__)
 
 5. 假突破。有时大盘环境不好，或者单纯的建仓过猛。需要长期跟踪。不过这个模型应该能在再次突破的时候扫到它
 """
+
+cache = {}
 
 def get_high_volume_candlesticks(
     candlesticks: list[Candlestick], volume_percentile: int = 5
@@ -189,11 +192,12 @@ def high_volume_breakout(
         # 获取所有行业板块
         industries = nk.get_ths_industry_market()
         industries = [ind for ind in industries if ind.code.startswith("881")]
-        stocks = set()
+        stocks = {}
 
         for industry in industries:
             # 获取板块的成分股
-            stocks.update(nk.get_ths_industry_stocks(industry.code))
+            for stock in nk.get_ths_industry_stocks(industry.code):
+                stocks[stock.stock_code] = stock
 
         # 用于调试
         # for stock in stocks:
@@ -209,15 +213,11 @@ def high_volume_breakout(
 
             # log.info(f"处理股票: {stock.stock_code} {stock.stock_name}")
 
-            # 获取股票近两年的数据
-            ret_day = nk.get_stock_day_price(
-                code=stock.stock_code,
-                start_date=start_date,
-                end_date=end_date,
+            ret_day = nk.get_stock_day_price_qfq_cached(
+                stock.stock_code, start_date=start_date, end_date=end_date
             )
 
-
-            if ret_day is None or len(ret_day) == 0 or ret_day[-1].percent_change <= 0:
+            if ret_day is None or len(ret_day) == 0 or ret_day.iloc[-1].percent_change <= 0:
                 return None
             
             if len(ret_day) < 30:
@@ -226,7 +226,7 @@ def high_volume_breakout(
             # 转换为Candlestick对象
             candlesticks = [
                 Candlestick(
-                    trade_date=data.trade_date,
+                    trade_date=data.Index.strftime("%Y%m%d"),
                     open=data.open,
                     high=data.high,
                     low=data.low,
@@ -235,9 +235,8 @@ def high_volume_breakout(
                     change_pct=data.percent_change,
                     pre_close=data.pre_close,
                 )
-                for data in ret_day
+                for data in ret_day.itertuples()
             ]
-            
             # 检查是否是高量突破，并同时获取压力点
             is_breakout, pressure_points = is_high_volume_breakout(
                 candlesticks, volume_percentile
@@ -255,7 +254,7 @@ def high_volume_breakout(
 
         run_start_time = time.time()
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_results = {executor.submit(process_stock, stock): stock for stock in stocks}
+            future_results = {executor.submit(process_stock, stock): stock for stock in stocks.values()}
             for future in concurrent.futures.as_completed(future_results):
                 result = future_results[future]
                 try:
@@ -268,6 +267,10 @@ def high_volume_breakout(
             
     finally:
         resultQueue.put(None)
+        # 打印cache变量的内存占用量
+        total_size = sum(len(v) for v in cache.values())
+        log.info(f"cache总大小: {total_size}条数据")
+        log.info(f"cache keys len: {len(cache.keys())}, stocks len: {len(stocks)}")
 
 
 def high_volume_breakout_backtrace(

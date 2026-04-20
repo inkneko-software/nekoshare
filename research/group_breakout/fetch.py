@@ -35,6 +35,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 from mootdx.quotes import Quotes
 import warnings
+import redis
 
 from utils.log import LoggerFactory
 
@@ -667,7 +668,111 @@ def get_ths_industry_stocks(code: str) -> list[THSIndustryStock]:
     ]
     return stocks
 
+# 缓存
+cache = {}
+# 浦发银行的前复权因子最新日期，用于判断是否需要清空缓存，因为复权因子发生了变化
+last_600000_qfq_date = 0
+def get_stock_day_price_qfq_cached(code: str, start_date=None, end_date=None) -> pd.DataFrame:
+    global last_600000_qfq_date
+    global cache
 
+    sql = "SELECT trade_date FROM stock_day_qfq WHERE stock_code = '600000' ORDER BY trade_date DESC LIMIT 1"
+    df_date = pd.read_sql(sql, engine)
+    df_date = df_date.iloc[0, 0]
+    if last_600000_qfq_date != df_date:
+        log.info(f"last {last_600000_qfq_date} vs current {df_date}, 复权因子发生了变化，清空缓存")
+        cache.clear()
+        last_600000_qfq_date = df_date
+
+    def load_from_db():
+        start_year = start_date[:4]
+        end_year = end_date[:4]
+        df = get_stock_day_price_df(
+            code=code,
+            start_date=start_year + "0101",
+            end_date=end_year + "1231",
+        )
+        df["trade_date"] = pd.to_datetime(df["trade_date"])
+        df.set_index("trade_date", inplace=True)
+        df.sort_index(inplace=True)
+        df.index.name = "trade_date"
+        return df
+
+    if code in cache:
+        df = cache[code]
+        df_start = df.index.min()
+        df_end = df.index.max()
+        is_cover = df_start <= pd.Timestamp(start_date) and df_end >= pd.Timestamp(end_date)
+        if is_cover:
+            ret_day = df.loc[start_date:end_date]
+            # # 如果请求的end_date是当天开盘中，则从数据库中获取最新数据
+            # now = datetime.now()
+            # print(f"请求的end_date: {end_date}, 当前日期: {now.date()}, 当前时间: {now.time()}")
+            # if datetime.strptime(end_date, "%Y%m%d").date() == now.date() and (now.time() > datetime.strptime("09:25", "%H:%M").time() and now.time() < datetime.strptime("15:00", "%H:%M").time() ) :
+            #     sql = """
+            #         SELECT stock_code, stock_name, trade_date, open, close, high, low, pre_close, percent_change, volume, amount,created_at FROM stock_day_price
+            #         WHERE stock_code = %s AND trade_date = %s
+            #         """
+            #     param = (code, end_date)
+            #     df_k = pd.read_sql(sql, engine, params=param)
+            #     print(f"当天数据库中的数据: {df_k}")
+            #     if len(df_k) != 0 and (df_k["trade_date"] == pd.to_datetime(end_date)).any():
+            #        print(f"更新当天数据: {df_k.iloc[0]}")
+            #        ret_day[pd.to_datetime(end_date)] = df_k.iloc[0]
+        else:
+            df = load_from_db()
+            cache[code] = df
+            ret_day = df.loc[start_date:end_date]
+    else:
+        df = load_from_db()
+        cache[code] = df
+        ret_day = df.loc[start_date:end_date]
+    return ret_day
+
+def get_stock_day_price_df(
+    code: str, start_date=None, end_date=None, fq="qfq"
+) -> pd.DataFrame:
+    pool = MySQLConnectionPool()
+    sql = """
+        SELECT stock_code, stock_name, trade_date, open, close, high, low, pre_close, percent_change, volume, amount,created_at FROM stock_day_price
+        WHERE stock_code = %s
+        """
+    param = None
+    date_sql = ""
+    if start_date != None and end_date != None:
+        date_sql = " AND trade_date BETWEEN %s AND %s"
+        param = (code, start_date, end_date)
+    elif start_date != None:
+        date_sql = " AND trade_date >= %s"
+        param = (code, start_date)
+    elif end_date != None:
+        date_sql = " AND trade_date <= %s"
+        param = (code, end_date)
+    else:
+        param = (code,)
+
+    df_k = pd.read_sql(sql + date_sql, engine, params=param)
+    if len(df_k) == 0:
+        return []
+
+    if fq == "qfq":
+        sql = """
+        SELECT stock_code, trade_date, adj_factor FROM stock_day_qfq
+        WHERE stock_code = %s
+        """
+        df_factor = pd.read_sql(sql + date_sql, engine, params=param)
+        df_merged = df_k
+        if len(df_factor) != 0:
+            df_merged = pd.merge(
+                df_k, df_factor, on=["stock_code", "trade_date"], how="inner"
+            )
+        
+        for col in ["open", "high", "low", "close", "pre_close"]:
+            df_merged[col] = df_merged[col] * df_merged["adj_factor"] 
+
+        return df_merged
+
+    return df_k
 def get_stock_day_price(
     code: str, start_date=None, end_date=None, fq="qfq"
 ) -> list[StockDayPrice]:
@@ -1006,7 +1111,7 @@ def loop(is_run_once=False):
         time.sleep(60 * 5)
 
 
-if __name__ == "__main__":
+def test_fetch_data():
     fetch_ths_industry_history_day_price = (
         True if os.getenv("FETCH_THS_INDUSTRY_HISTORY_DAY_PRICE", "0") == "1" else False
     )
@@ -1016,3 +1121,17 @@ if __name__ == "__main__":
         fetch_and_save(start_date="20100101", marketOnly=True)
     else:
         loop(run_once)
+
+def test_get_stock_day_price_qfq_cached():
+    first_run_start = time.time()
+    get_stock_day_price_qfq_cached("600000", start_date="20200601", end_date="20200831")
+    first_run_end = time.time()
+    log.info(f"第一次运行耗时: {first_run_end - first_run_start:.2f} 秒")
+
+    second_run_start = time.time()
+    get_stock_day_price_qfq_cached("600000", start_date="20200601", end_date="20200831")
+    second_run_end = time.time()
+    log.info(f"第二次运行耗时: {second_run_end - second_run_start:.2f} 秒")
+
+if __name__ == "__main__":
+    test_get_stock_day_price_qfq_cached()
