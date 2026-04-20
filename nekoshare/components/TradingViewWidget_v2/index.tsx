@@ -144,7 +144,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
             const volumeData = candlesticks.map((item) => ({
                 time: item.time,
                 value: item.volume,
-                color:  item.close - item.open > 0 ? '#ec3a37' : '#0093ad'
+                color: highlightDate === item.time ? '#e2d628' : item.close - item.open > 0 ? '#ec3a37' : '#0093ad',
             }));
 
             histogramSeries.setData(volumeData);
