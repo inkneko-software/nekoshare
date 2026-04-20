@@ -92,7 +92,9 @@ class RedisSubscriber:
                         stock_day_price_qfq[stock_code] = df_group
                     else:
                         df_old = stock_day_price_qfq[stock_code]
-                        df_old.loc[pd.to_datetime(trade_date)] = df_group.iloc[0]
+                        ts = pd.Timestamp(trade_date)
+                        if ts in df_old.index:
+                            df_old.loc[ts] = df_group.iloc[0]
 
 
 
