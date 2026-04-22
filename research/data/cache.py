@@ -1,5 +1,6 @@
 import threading
 import redis
+import os
 from utils.log import LoggerFactory
 
 log = LoggerFactory.get_logger(__name__)
@@ -26,7 +27,7 @@ class RedisSubscriber:
         t.start()
 
     def listen(self):
-        r = redis.Redis(decode_responses=True)
+        r = redis.Redis(decode_responses=True, host=os.getenv("REDIS_HOST"), port=int(os.getenv("REDIS_PORT")))
         pubsub = r.pubsub()
         pubsub.subscribe("nekoshare_cache_evict")
 

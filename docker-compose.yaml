@@ -31,3 +31,7 @@ services:
       - ./mysql:/var/lib/mysql
     env_file:
       - .env.development
+  nekoshare-redis:
+    image: redis
+    container_name: "nekoshare-redis"
+    restart: unless-stopped
