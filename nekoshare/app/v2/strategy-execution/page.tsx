@@ -329,9 +329,9 @@ export default function StrategyExecutionPage() {
                             label="策略选择"
                             onChange={e=>setSelectedStrategy(e.target.value)}
                         >
-                            <MenuItem value='breakout_execution'>板块共振突破</MenuItem>
+                            <MenuItem value='breakout_execution' disabled>板块共振突破</MenuItem>
                             <MenuItem value='volume_breakout_execution' >量能突破</MenuItem>
-                            <MenuItem value='breakout_trend'>下降趋势线突破</MenuItem>
+                            <MenuItem value='breakout_trend' disabled>下降趋势线突破</MenuItem>
                         </Select>
                     </FormControl>
                     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='zh-cn'>
