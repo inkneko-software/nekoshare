@@ -213,21 +213,31 @@ def get_stock_day_price_qfq_cached(code: str, start_date=None, end_date=None) ->
             ret_day = df.loc[start_date:end_date].copy()
         
 
-        # 如果请求的end_date是当天开盘中，则从数据库中获取最新数据
-        now = datetime.now()
-        if datetime.strptime(end_date, "%Y%m%d").date() == now.date() and (now.time() > datetime.strptime("09:25", "%H:%M").time() and now.time() < datetime.strptime("15:00", "%H:%M").time() ) :
-            with cache.stock_current_price_lock:
-                print(f"请求的end_date是当天开盘中，获取最新数据: {code} {end_date}")
-                sql = """
-                    SELECT stock_code, stock_name, trade_date, open, close, high, low, pre_close, percent_change, volume, amount,created_at FROM stock_day_price
-                    WHERE stock_code = %s AND trade_date = %s
-                    """
-                param = (code, end_date)
-                df_k = pd.read_sql(sql, engine, params=param)
-                print(f"当天数据库中的数据: {df_k}")
-                if len(df_k) != 0 and (ret_day.index == pd.to_datetime(end_date)).any():
-                    print(f"更新当天数据: {df_k.iloc[0]}")
-                    ret_day.loc[pd.to_datetime(end_date)] = df_k.iloc[0]
+        # # 如果请求的end_date是最新一日，则从相应缓存中获取最新数据
+        # if datetime.strptime(end_date, "%Y%m%d").date() == trade_day.get_latest_trading_day() :
+        #     with cache.stock_current_price_lock:
+        #         current_price = cache.stock_current_price.get(code)
+        #         if current_price is not None:
+        #             print(f"最新行情缓存命中: {current_price}")
+        #             ret_day.loc[pd.to_datetime(end_date)] = pd.Series(current_price)
+        #         elif len(cache.stock_current_price) != 0:
+        #             # 如果无该票的缓存，但是缓存不为空，说明该票没有当日数据
+        #             pass
+        #         else:
+        #             sql = """
+        #                 SELECT stock_code, stock_name, trade_date, open, close, high, low, pre_close, percent_change, volume, amount,created_at FROM stock_day_price
+        #                 WHERE trade_date = %s
+        #                 """
+        #             param = (end_date,)
+        #             df_k = pd.read_sql(sql, engine, params=param)
+        #             # 如果请求的日期数据不存在，则不替换当日行情数据
+        #             if len(df_k) != 0:
+        #                 cache.stock_current_price = {
+        #                     row['stock_code']: row.to_dict()
+        #                     for _, row in df_k.iterrows()
+        #                 }
+        #                 print(f"最新行情缓存更新: {cache.stock_current_price}")
+        #                 ret_day.loc[pd.to_datetime(end_date)] = pd.Series(cache.stock_current_price[code])
         
         return ret_day
 
