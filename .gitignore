@@ -7,3 +7,4 @@ research/**/__pycache__/
 hsjday.zip
 .env.production
 .env.production.ps1
+*.log
