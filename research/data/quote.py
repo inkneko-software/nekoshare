@@ -201,7 +201,6 @@ def get_stock_day_price_qfq_cached(code: str, start_date=None, end_date=None) ->
             df_end = df.index.max()
             is_cover = df_start <= pd.Timestamp(start_date) and df_end >= pd.Timestamp(end_date)
             if is_cover:
-                log.info("缓存命中: %s %s-%s", code, start_date, end_date)
                 ret_day = df.loc[start_date:end_date].copy()
             else:
                 df = load_from_db()
