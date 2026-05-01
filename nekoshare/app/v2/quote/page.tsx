@@ -7,8 +7,8 @@ import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries 
 import React, { useEffect, useRef, memo } from 'react';
 import TradingViewWidget, { Candlestick, TrendLine } from '@/components/TradingViewWidget_v2';
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
-import { THSIndustryMarket, GetIndustriesResponse } from '../api/ths/getIndustries/route';
-import { GetIndustryStocksResponse } from '../api/ths/getIndustryStocks/route';
+import { THSIndustryMarket, GetIndustriesResponse } from '@/app/api/ths/getIndustries/route';
+import { GetIndustryStocksResponse } from '@/app/api/ths/getIndustryStocks/route';
 import dayjs, { Dayjs } from 'dayjs';
 
 export default function Home() {

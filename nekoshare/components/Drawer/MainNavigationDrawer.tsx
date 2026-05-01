@@ -57,11 +57,11 @@ export default function MainNavigationDrawer() {
   };
 
   const navigationList = [
-    { text: '行情', icon: <ShowChartOutlinedIcon />, href: '/v2' },
-    { text: '自选', icon: <Inventory2OutlinedIcon />, href: '/v2/favorites' },
-    { text: '策略执行', icon: <ManageSearchOutlinedIcon />, href: '/v2/strategy-execution' },
-    { text: '策略回测', icon: <HistoryOutlinedIcon />, href: '/v2/strategy-backtrace' },
-    { text: '模拟交易', icon: <LocalAtmOutlinedIcon />, href: '/v2/trading' },
+    { text: '行情', icon: <ShowChartOutlinedIcon />, href: '/v2/quote', sub_routes: '/v2/quote' },
+    { text: '涨停复盘', icon: <Inventory2OutlinedIcon />, href: '/v2/focus/hot', sub_routes: '/v2/focus' },
+    { text: '策略执行', icon: <ManageSearchOutlinedIcon />, href: '/v2/strategy-execution', sub_routes: '/v2/strategy-execution' },
+    { text: '策略回测', icon: <HistoryOutlinedIcon />, href: '/v2/strategy-backtrace', sub_routes: '/v2/strategy-backtrace' },
+    { text: '模拟交易', icon: <LocalAtmOutlinedIcon />, href: '/v2/trading', sub_routes: '/v2/trading' },
   ]
   const DrawerList = (
     <Box sx={{ width: 250 }} role="presentation" onClick={toggleDrawer(false)}>
@@ -69,7 +69,7 @@ export default function MainNavigationDrawer() {
         {navigationList.map((nav, index) => (
           <ListItem key={nav.text} disablePadding >
             <Link href={nav.href} style={{ textDecoration: 'none', color: 'inherit', width: '100%' }}>
-              <StyledListItemButton sx={{ padding: '0px 0px', margin: '8px 24px' }} selected={pathName === nav.href}>
+              <StyledListItemButton sx={{ padding: '0px 0px', margin: '8px 24px' }} selected={pathName.startsWith(nav.sub_routes)} >
                 <ListItemIcon sx={{marginLeft: '8px'}}>
                   {nav.icon}
                 </ListItemIcon>
