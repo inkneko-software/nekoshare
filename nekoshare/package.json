@@ -18,6 +18,8 @@
     "@mui/x-date-pickers": "^8.9.2",
     "dayjs": "^1.11.13",
     "decimal.js": "^10.6.0",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "lightweight-charts": "^5.0.8",
     "mysql2": "^3.14.3",
     "next": "15.4.2",
