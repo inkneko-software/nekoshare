@@ -6,7 +6,7 @@ import { TreemapSeriesNodeItemOption } from 'echarts/types/src/chart/treemap/Tre
 import { useContext, useEffect, useState } from 'react';
 import { useTheme } from '@mui/material';
 import HotMoneyTransactionTable, { HotMoneyTransaction, Transaction } from '@/components/HotMoneyTransactionTable';
-import { FocusContext } from '../layout';
+import { FocusContext } from '@/app/v2/focus/context';
 
 interface ConceptTreemapNode {
     name: string;

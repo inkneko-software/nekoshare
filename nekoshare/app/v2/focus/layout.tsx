@@ -6,13 +6,8 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn'
-import { createContext } from "react";
 import { getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
-interface FocusContextProps {
-    selectedTradeDate: dayjs.Dayjs;
-}
-
-export const FocusContext = createContext<FocusContextProps>({ selectedTradeDate: dayjs(getLatestTradingDay()) });
+import { FocusContext } from '@/app/v2/focus/context';
 function FocusLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
     const routes = [
         { label: '概念热点', value: 'hot', href: '/v2/focus/hot' },
