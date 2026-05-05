@@ -67,8 +67,8 @@ export default function Home() {
                     if (!response.ok) {
                         throw new Error('网络响应错误');
                     }
-                    data = await response.json() ;
-                    setTrendLines(data.data.map((item:{start_date: string, end_date: string, high_price:number, low_price: number})  => ({
+                    data = await response.json();
+                    setTrendLines(data.data.map((item: { start_date: string, end_date: string, high_price: number, low_price: number }) => ({
                         startPoint: {
                             time: dayjs(item.start_date).format("YYYY-MM-DD"),
                             price: item.low_price
@@ -103,8 +103,8 @@ export default function Home() {
                 if (!response.ok) {
                     throw new Error('网络响应错误');
                 }
-                data = await response.json() ;
-                setTrendLines(data.data.map((item:{start_date: string, end_date: string, high_price:number, low_price: number})  => ({
+                data = await response.json();
+                setTrendLines(data.data.map((item: { start_date: string, end_date: string, high_price: number, low_price: number }) => ({
                     startPoint: {
                         time: dayjs(item.start_date).format("YYYY-MM-DD"),
                         price: item.low_price
@@ -172,6 +172,10 @@ export default function Home() {
                 />
             </Box>
             <Box sx={{ width: '60%', display: 'flex', flexDirection: 'column' }}>
+
+                <Paper sx={{ height: '80%', borderBottom: '1px black solid' }} square>
+                    <TradingViewWidget candlesticks={candlesticks} rectangles={[]} trendLines={trendLines} />
+                </Paper>
                 <Paper sx={{ height: '20%', borderBottom: '1px black solid' }} square>
                     {
                         (selectedIndustry !== -1 || selectedStock !== -1) && (
@@ -218,12 +222,9 @@ export default function Home() {
                     }
 
                 </Paper>
-                <Paper sx={{ height: '60%', borderBottom: '1px black solid' }} square>
-                    <TradingViewWidget candlesticks={candlesticks} rectangles={[]} trendLines={trendLines} />
-                </Paper>
-                <Paper sx={{ height: '20%' }} square>
+                {/* <Paper sx={{ height: '20%' }} square>
                     大盘数据
-                </Paper>
+                </Paper> */}
             </Box>
         </Box>
     )
