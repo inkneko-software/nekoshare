@@ -141,17 +141,19 @@ def is_high_volume_breakout(
     # 当日收盘价需要超过参考K线中的最高价
     max_k =  max(reference_candlesticks, key=lambda c: c.high)
     threshold = max_k.high
-    
+    # log.debug(f"高开判断：{(candlesticks[-1].open - candlesticks[-1].pre_close ) / candlesticks[-1].pre_close > 0.05}")
     # 当天高开大于5%，直接忽略
     if (candlesticks[-1].open - candlesticks[-1].pre_close ) / candlesticks[-1].pre_close > 0.05:
         return False, []
 
     # 判断高量K突破条件是否满足
+    # log.debug(f"突破条件判断：{current_close < threshold}")
     if current_close < threshold:
         return False, []
     
     # 拉取附近7天的价格，判断是否突破
     recent_week_candlesticks = [max(c.open, c.close) for c in candlesticks[-28:-1]]
+    # log.debug(f"附近7天判断：{current_close < max(recent_week_candlesticks)}")
     if current_close < max(recent_week_candlesticks):
         return False, []
 
@@ -159,10 +161,12 @@ def is_high_volume_breakout(
     recent_7_days = candlesticks[-7:-1]
     low_price = min([c.low for c in recent_7_days])
     high_price = max([c.high for c in recent_7_days])
-    if (high_price - low_price) / low_price > 0.20:
+    # log.debug(f"7日涨幅判断：{(high_price - low_price) / low_price > 0.30}")
+    if (high_price - low_price) / low_price > 0.30:
         return False, []
 
     # 忽略前期爆量近期无量的票
+    # log.debug(f"距压力位涨幅判断：{(current_close - threshold ) / threshold > 0.12}")
     if (current_close - threshold ) / threshold > 0.12:
         return False, []
     
@@ -395,12 +399,46 @@ def high_volume_breakout_backtrace(
     resultQueue.put(None)
 
 
+def test_stock_breakout(stock_code, start_date, end_date, volume_percentile=5):
+    ret_day = nk.get_stock_day_price_qfq_cached(
+        stock_code, start_date=start_date, end_date=end_date
+    )
+
+    if ret_day is None or len(ret_day) == 0 or ret_day.iloc[-1].percent_change <= 0:
+        return None
+    
+    if len(ret_day) < 30:
+        return None
+    
+    # 转换为Candlestick对象
+    candlesticks = [
+        Candlestick(
+            trade_date=data.Index.strftime("%Y-%m-%d"),
+            open=data.open,
+            high=data.high,
+            low=data.low,
+            close=data.close,
+            volume=data.volume,
+            change_pct=data.percent_change,
+            pre_close=data.pre_close,
+        )
+        for data in ret_day.itertuples()
+    ]
+    # 检查是否是高量突破，并同时获取压力点
+    is_breakout, pressure_points = is_high_volume_breakout(
+        candlesticks, volume_percentile
+    )
+    print(is_breakout, pressure_points)
+
+
 if __name__ == "__main__":
     resultQueue = queue.Queue()
-    end_date = "20260325"
+    end_date = "20260312"
     two_years_ago = (datetime.strptime(end_date, "%Y%m%d") - relativedelta(years=1) - relativedelta(days=180)).strftime("%Y%m%d")
-    high_volume_breakout(resultQueue, volume_percentile=5, start_date=two_years_ago, end_date=end_date)
-    log.info(f"高量突破策略执行完成，结果数量: {resultQueue.qsize()}")
+    # high_volume_breakout(resultQueue, volume_percentile=5, start_date=two_years_ago, end_date=end_date)
+    # log.info(f"高量突破策略执行完成，结果数量: {resultQueue.qsize()}")
+
+    test_stock_breakout("600396", two_years_ago, end_date)
     # 处理结果
     # item = resultQueue.get()
     # while item is not None:
