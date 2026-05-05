@@ -139,7 +139,8 @@ def is_high_volume_breakout(
     current_close = candlesticks[-1].close
     
     # 当日收盘价需要超过参考K线中的最高价
-    threshold = max([c.high for c in reference_candlesticks])
+    max_k =  max(reference_candlesticks, key=lambda c: c.high)
+    threshold = max_k.high
     
     # 当天高开大于5%，直接忽略
     if (candlesticks[-1].open - candlesticks[-1].pre_close ) / candlesticks[-1].pre_close > 0.05:
@@ -166,8 +167,7 @@ def is_high_volume_breakout(
         return False, []
     
     pressure_points = [
-        PressurePoint(trade_date=str(c.trade_date), price=c.high)
-        for c in reference_candlesticks
+        PressurePoint(trade_date=max_k.trade_date, price=max_k.high)
     ]
 
     return True, pressure_points
@@ -225,7 +225,7 @@ def high_volume_breakout(
             # 转换为Candlestick对象
             candlesticks = [
                 Candlestick(
-                    trade_date=data.Index.strftime("%Y%m%d"),
+                    trade_date=data.Index.strftime("%Y-%m-%d"),
                     open=data.open,
                     high=data.high,
                     low=data.low,
