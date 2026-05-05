@@ -2,7 +2,7 @@
 import StockData from '@/lib/StockData';
 import StockDayPrice from '@/lib/StockDayPrice';
 import { Box, Container, Typography } from '@mui/material';
-import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode, CrosshairMode, LineStyle, ChartOptions, ChartOptionsBase, LayoutOptions, DeepPartial, LineWidth, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode, CrosshairMode, LineStyle, ChartOptions, ChartOptionsBase, LayoutOptions, DeepPartial, LineWidth, IChartApi, ISeriesApi, LineSeries, SeriesMarker } from 'lightweight-charts';
 import React, { useEffect, useRef, memo, useState } from 'react';
 import { PreOpenQualitiedResult } from '@/app/api/quantitative/getPreOpenQualified/route';
 import { RectangleDrawingTool } from './plugins/plugins/rectangle-drawing-tool/rectangle-drawing-tool';
@@ -19,6 +19,11 @@ export interface Candlestick {
     low: number;
     close: number;
     volume: number;
+}
+
+interface MoveAverage {
+    time: string;
+    value: number;
 }
 
 interface Point {
@@ -58,6 +63,23 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [chartApi, setChartApi] = useState<IChartApi | null>(null)
     const [seriesApi, setSeriesApi] = useState<ISeriesApi<'Candlestick'> | null>(null);
+
+    function calculateMA(data: Candlestick[], n: number): MoveAverage[] {
+        const result = [];
+        // 用于存储近n日的价格
+        const chunk = [];
+        for (let i = 0; i < data.length; i++) {
+            let sum = 0;
+            chunk.push(data[i].close)
+            if (chunk.length > n) {
+                chunk.shift();
+            }
+            sum = chunk.reduce((acc, cur) => acc + cur, 0);
+            sum = sum / chunk.length;
+            result.push({ time: data[i].time, value: sum });
+        }
+        return result;
+    }
     useEffect(
         () => {
             if (containerRef.current === null || tooltipRef.current === null) {
@@ -106,6 +128,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
             containerRef.current.appendChild(chartElement);
             setChartApi(chart);
 
+            // 蜡烛图series
             const candlestickSeries = chart.addSeries(CandlestickSeries, {
                 upColor: 'transparent',
                 downColor: '#0093ad',
@@ -133,6 +156,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             candlestickSeries.setData(dayPrice);
 
+            // 成交量series
             const histogramSeries = chart.addSeries(HistogramSeries, {
                 color: '#0093ad',
                 priceFormat: {
@@ -155,6 +179,56 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                 },
             });
 
+
+
+            // 5日线型图series
+            const ma5Series = chart.addSeries(LineSeries, {
+                color: '#ff0400',
+                lineWidth: 1,
+                priceLineWidth: 1,
+                priceLineStyle: LineStyle.Solid,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+            });
+
+            const ma5Data = calculateMA(candlesticks, 5);
+            ma5Series.setData(ma5Data);
+
+            // 10日线型图series
+            const ma10Series = chart.addSeries(LineSeries, {
+                color: '#ffd000',
+                lineWidth: 1,
+                priceLineWidth: 1,
+                priceLineStyle: LineStyle.Solid,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+            });
+
+            const ma10Data = calculateMA(candlesticks, 10);
+            ma10Series.setData(ma10Data);
+
+            // 压力位标注：priceLine + seriesMarker
+            const makers: SeriesMarker<Time>[] = []
+            if (pressurePoints) {
+                for (let pressurePoint of pressurePoints) {
+                    const priceLine = candlestickSeries.createPriceLine({
+                        price: pressurePoint.price,
+                        color: '#ff0400',
+                        lineWidth: 1,
+                        lineStyle: LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `压力位 ${pressurePoint.trade_date}`,
+                    });
+                    makers.push({
+                        time: pressurePoint.trade_date,
+                        position: 'aboveBar',
+                        color: '#f61010',
+                        shape: 'circle',
+                        text: 'P',
+                    });
+                }
+                createSeriesMarkers<Time>(candlestickSeries, makers);
+            }
             //tooltip逻辑
             chart.subscribeCrosshairMove((param) => {
                 if (tooltipRef.current === null) {
@@ -209,18 +283,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                         trendLineDrawingTool.addNewTrendLine(trendLine.startPoint, trendLine.endPoint)
                     }
                 }
-                if (pressurePoints) {
-                    for (let pressurePoint of pressurePoints) {
-                        const priceLine = candlestickSeries?.createPriceLine({
-                            price: pressurePoint.price,
-                            color: '#ff0400',
-                            lineWidth: 1,
-                            lineStyle: LineStyle.Dashed,
-                            axisLabelVisible: true,
-                            title: `压力位 ${pressurePoint.trade_date}`,
-                        });
-                    }
-                }
+
             }
 
             console.log(chart, candlestickSeries)
