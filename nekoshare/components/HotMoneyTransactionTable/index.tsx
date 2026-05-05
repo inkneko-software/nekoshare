@@ -20,6 +20,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { visuallyHidden } from '@mui/utils';
 import { useEffect, useState } from 'react';
+import React from 'react';
 
 
 const customizedHiddenScrollBarStyle = {
@@ -131,7 +132,7 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
               hotMoneyList.map((hotMoney) => {
                 let chunked = chunck(hotMoney.transactions, 3)
                 return (
-                  <>
+                  <React.Fragment key={hotMoney.name}>
                     <TableRow
                       key={`${hotMoney.name}_${0}`}
                     >
@@ -171,7 +172,7 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
                     {
                       chunked.slice(1).map((chunk, row_index) => (
                         <TableRow
-                          key={`${hotMoney.name}_${row_index}`}
+                          key={`${hotMoney.name}_${row_index + 1}`}
                         >
                           {/* <TableCell
                                                         align="left"
@@ -205,7 +206,7 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
                         </TableRow>
                       ))
                     }
-                  </>
+                  </React.Fragment>
                 )
               })
             }
