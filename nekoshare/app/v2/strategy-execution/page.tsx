@@ -63,7 +63,7 @@ export default function StrategyExecutionPage() {
     const [trendLines, setTrendLines] = React.useState<TrendLine[]>([])
     const [pressurePoints, setPressurePoints] = React.useState<PressurePoint[]>([])
     const logRef = React.useRef(null)
-    const [selectedTradeDate, setSelectedTradeDate] = React.useState<Dayjs>(dayjs(new Date()));
+    const [selectedTradeDate, setSelectedTradeDate] = React.useState<Dayjs>(dayjs(getLatestTradingDay()));
     const [selectedStrategy, setSelectedStrategy] = React.useState('volume_breakout_execution')
 
     const [selectedId, setSelectedId] = React.useState(-1)
@@ -126,7 +126,7 @@ export default function StrategyExecutionPage() {
                             throw new Error('网络响应错误');
                         }
                         let data = (await response.json()).data as StockDayPrice[];
-                        let day = (i: number) => {console.log( data, data.length, i ) ; return i >= data.length ? 0 : data[i].close};
+                        let day = (i: number) => { console.log(data, data.length, i); return i >= data.length ? 0 : data[i].close };
                         //从day0 到 day5
                         let day0 = day(0);
                         let day1 = day(1);
@@ -135,9 +135,9 @@ export default function StrategyExecutionPage() {
                         let day4 = day(4);
                         let day5 = day(5);
                         let reward: Reward = {
-                            afterDay: data.length > 1 ? (day1 - day0) / day0 * 100  : 0,
-                            threeDay: data.length > 1 ? (Math.max(day1, day2, day3) - day0) /day0 * 100: 0,
-                            fiveDay: data.length > 1 ? (Math.max(day1, day2, day3, day4, day5) - day0) /day0 * 100: 0
+                            afterDay: data.length > 1 ? (day1 - day0) / day0 * 100 : 0,
+                            threeDay: data.length > 1 ? (Math.max(day1, day2, day3) - day0) / day0 * 100 : 0,
+                            fiveDay: data.length > 1 ? (Math.max(day1, day2, day3, day4, day5) - day0) / day0 * 100 : 0
                         }
                         batchResults[i].reward = reward
                     } else {
@@ -147,7 +147,7 @@ export default function StrategyExecutionPage() {
                             throw new Error('网络响应错误');
                         }
                         let data = (await response.json()).data as THSIndustryDayPrice[];
-                        let day = (i: number) => { console.log(data,data.length, i ) ; return i >= data.length ? 0 : data[i].close};
+                        let day = (i: number) => { console.log(data, data.length, i); return i >= data.length ? 0 : data[i].close };
 
 
                         //从day0 到 day5
@@ -159,8 +159,8 @@ export default function StrategyExecutionPage() {
                         let day5 = day(5);
                         let reward: Reward = {
                             afterDay: data.length > 1 ? (day1 - day0) / day0 * 100 : 0,
-                            threeDay: data.length > 1 ? (Math.max(day1, day2, day3) - day0) /day0 * 100 : 0,
-                            fiveDay: data.length > 1 ? (Math.max(day1, day2, day3, day4, day5) - day0) /day0 * 100 : 0
+                            threeDay: data.length > 1 ? (Math.max(day1, day2, day3) - day0) / day0 * 100 : 0,
+                            fiveDay: data.length > 1 ? (Math.max(day1, day2, day3, day4, day5) - day0) / day0 * 100 : 0
                         }
                         batchResults[i].reward = reward
                     }
@@ -231,12 +231,12 @@ export default function StrategyExecutionPage() {
                 }
                 console.log(selectedResult.trend_lines)
                 setRectangles(tmp)
-                if (selectedResult.trend_lines !== undefined){
+                if (selectedResult.trend_lines !== undefined) {
                     setTrendLines([...selectedResult.trend_lines])
-                }else{
+                } else {
                     setTrendLines([])
                 }
-                if (selectedResult.pressure_points !== undefined){
+                if (selectedResult.pressure_points !== undefined) {
                     setPressurePoints([...selectedResult.pressure_points])
                 }
             } catch (exception) {
@@ -289,9 +289,9 @@ export default function StrategyExecutionPage() {
                 console.log(selectedResult.trend_lines)
                 console.log(results, newSelectedId, selectedResult)
                 setRectangles(tmp)
-                if (selectedResult.trend_lines !== undefined){
+                if (selectedResult.trend_lines !== undefined) {
                     setTrendLines([...selectedResult.trend_lines])
-                }else{
+                } else {
                     setTrendLines([])
                 }
 
@@ -327,7 +327,7 @@ export default function StrategyExecutionPage() {
                             size='small'
                             labelId='strategy-select-label-id'
                             label="策略选择"
-                            onChange={e=>setSelectedStrategy(e.target.value)}
+                            onChange={e => setSelectedStrategy(e.target.value)}
                         >
                             <MenuItem value='breakout_execution' disabled>板块共振突破</MenuItem>
                             <MenuItem value='volume_breakout_execution' >量能突破</MenuItem>
@@ -341,7 +341,10 @@ export default function StrategyExecutionPage() {
                             value={dayjs(selectedTradeDate)}
                             onChange={val => val && setSelectedTradeDate(val)}
                             slotProps={{ textField: { size: 'small' } }}
-                            sx={{ marginRight: '8px' }} />
+                            sx={{ marginRight: '8px' }}
+                            shouldDisableDate={(date) => !isTradingDay(date) || date.isAfter(getLatestTradingDay())}
+                        />
+
                     </LocalizationProvider>
                     <Button variant='outlined' onClick={handleExecute} disabled={isExecuting} sx={{ flexGrow: 1, width: '30%' }}>执行</Button>
                 </Box>
@@ -382,10 +385,10 @@ export default function StrategyExecutionPage() {
             </Paper>
             <Paper sx={{ width: '60%', borderLeft: '1px #505a5e solid', display: 'flex', flexDirection: 'column' }} square>
                 <Box sx={{ height: '70%' }}>
-                    <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine=>({
-                        startPoint: { time: trendLine.start_date, price: trendLine.low_price  },
-                        endPoint: { time: trendLine.end_date, price: trendLine.high_price  }
-                    }))} pressurePoints={pressurePoints} highlightDate={ (isTradingDay(selectedTradeDate) ? selectedTradeDate : getLatestTradingDay(selectedTradeDate)).format("YYYY-MM-DD")}/>
+                    <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine => ({
+                        startPoint: { time: trendLine.start_date, price: trendLine.low_price },
+                        endPoint: { time: trendLine.end_date, price: trendLine.high_price }
+                    }))} pressurePoints={pressurePoints} highlightDate={(isTradingDay(selectedTradeDate) ? selectedTradeDate : getLatestTradingDay(selectedTradeDate)).format("YYYY-MM-DD")} />
                 </Box>
                 <Box ref={logRef} sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
                     {
