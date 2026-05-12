@@ -84,13 +84,11 @@ class RedisSubscriber:
                 """
             param = (trade_date,)
             df_k = pd.read_sql(sql, engine, params=param)
-            # 如果请求的日期数据不存在，则不替换当日行情数据
             if len(df_k) != 0:
                 for stock_code, df_group in df_k.groupby("stock_code"):
                     df_group = df_group.set_index("trade_date")
-                    if stock_code not in stock_day_price_qfq:
-                        stock_day_price_qfq[stock_code] = df_group
-                    else:
+                    # 如果请求的日期数据不存在，则不替换当日行情数据
+                    if stock_code  in stock_day_price_qfq:
                         df_old = stock_day_price_qfq[stock_code]
                         ts = pd.Timestamp(trade_date)
                         if ts in df_old.index:
