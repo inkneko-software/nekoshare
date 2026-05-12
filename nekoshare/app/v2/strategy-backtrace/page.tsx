@@ -328,9 +328,6 @@ export default function StrategyBacktracePage() {
                                 </AccordionSummary>
                                 <AccordionDetails sx={{padding: '0px 0px'}}>
                                     <BackTracePriceTable
-                                        enableBackTrace
-                                        columnNames={['', '名称', '涨幅(%)', '三日', '五日', '十日']}
-                                        columnWidths={['10%', '30%', '15%', '15%', '15%', '15%']}
                                         selectedId={selectedDayId === dayIndex ? selectedId : -1}
                                         onSelectedChange={newSelectedId=> {handleSelectChange(dayIndex, newSelectedId)}}
                                         fullHeight={true}

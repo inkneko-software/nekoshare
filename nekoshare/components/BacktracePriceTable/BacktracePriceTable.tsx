@@ -20,6 +20,7 @@ import Switch from '@mui/material/Switch';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { visuallyHidden } from '@mui/utils';
+import { Head } from 'next/document';
 
 
 const customizedHiddenScrollBarStyle = {
@@ -62,6 +63,13 @@ const customizedScrollBarStyle = {
 }
 
 
+interface HeadCell {
+    name: '' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日';
+    width: string;
+    position: 'left' | 'right'
+}
+
+
 interface BackTracePriceTableData {
     id: number,
     name: string;
@@ -73,19 +81,18 @@ interface BackTracePriceTableData {
 }
 
 interface BackTracePriceTableProps {
-    enableBackTrace: boolean;
-    columnNames: string[];
-    columnWidths: string[];
     rows: BackTracePriceTableData[];
     selectedId?: number;
     onSelectedChange?: (selectedId: number) => void;
     fullHeight?: boolean;
 }
 
-export default function BackTracePriceTable({ enableBackTrace, columnNames, columnWidths, rows, selectedId, onSelectedChange, fullHeight }: BackTracePriceTableProps) {
+export default function BackTracePriceTable({ rows, selectedId, onSelectedChange, fullHeight }: BackTracePriceTableProps) {
 
+    const [order, setOrder] = React.useState<'asc' | 'desc'>('asc');
+    const [orderBy, setOrderBy] = React.useState<'' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日'>('');
     const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
-        if (selectedId === undefined){
+        if (selectedId === undefined) {
             return;
         }
 
@@ -96,8 +103,68 @@ export default function BackTracePriceTable({ enableBackTrace, columnNames, colu
         return newSelected;
     };
 
+    // const columnNames = ['', '名称', '涨幅(%)', '次日', '三日', '五日']
+    // const columnWidths = ['10%', '30%', '15%', '15%', '15%', '15%']
+
+    const columns: HeadCell[] = [
+        { name: '', width: '10%', position: 'right' },
+        { name: '名称', width: '30%', position: 'left' },
+        { name: '涨幅(%)', width: '15%', position: 'right' },
+        { name: '次日', width: '15%', position: 'right' },
+        { name: '三日', width: '15%', position: 'right' },
+        { name: '五日', width: '15%', position: 'right' },
+    ]
+
+    const visiableRows = React.useMemo(() => {
+        if (orderBy === '' || orderBy === '名称') {
+            return rows;
+        }
+        return rows.slice().sort((a, b) => {
+            if (order === 'asc') {
+                if (orderBy === '涨幅(%)') {
+                    return a.change_pct - b.change_pct;
+                } else if (orderBy === '次日') {
+                    return a.afterDay - b.afterDay;
+                } else if (orderBy === '三日') {
+                    return a.threeDay - b.threeDay;
+                } else {
+                    return a.fiveDay - b.fiveDay;
+                }
+            } else {
+                if (orderBy === '涨幅(%)') {
+                    return b.change_pct - a.change_pct;
+                } else if (orderBy === '次日') {
+                    return b.afterDay - a.afterDay;
+                } else if (orderBy === '三日') {
+                    return b.threeDay - a.threeDay;
+                } else {
+                    return b.fiveDay - a.fiveDay;
+                }
+            }
+        })
+    }, [rows, order, orderBy]);
+
+    const handleRequestSort = (
+        event: React.MouseEvent<unknown>,
+        property: '' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日',
+    ) => {
+        if (property === '' || property === '名称') {
+            return;
+        }
+        if (orderBy === property && order === 'desc') {
+            setOrder('asc');
+            setOrderBy('');
+            return;
+        }
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+    };
+
+
+
     return (
-        <Paper sx={[{ width: '100%', ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle }}, !fullHeight && {height: '100%',overflow: 'auto', } ]} square>
+        <Paper sx={[{ width: '100%', ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle } }, !fullHeight && { height: '100%', overflow: 'auto', }]} square>
             <TableContainer>
                 <Table
                     aria-labelledby="tableTitle"
@@ -106,73 +173,34 @@ export default function BackTracePriceTable({ enableBackTrace, columnNames, colu
                 >
                     <TableHead>
                         <TableRow>
-                            <TableCell
-                                key="index"
-                                align="right"
-                                padding='normal'
-                                width={columnWidths[0]}
-                            >
-                                {columnNames[0]}
-                            </TableCell>
-                            <TableCell
-                                key="name"
-                                align="left"
-                                padding='normal'
-                                width={columnWidths[1]}
-                            >
-                                {columnNames[1]}
-                            </TableCell>
-                            <TableCell
-                                key="change_pct"
-                                align="right"
-                                padding='normal'
-                                width={columnWidths[2]}
-                            >
-                                {columnNames[2]}
-                            </TableCell>
                             {
-                                enableBackTrace ? (
+                                columns.map((column, index) => (
                                     <TableCell
-                                        key="oneday"
-                                        align="right"
-                                        padding='normal'
-                                        width={columnWidths[3]}
+                                        key={column.name}
+                                        align={column.position}
+                                        width={column.width}
+                                        sortDirection={orderBy === column.name ? order : false}
+                                        sx={{ padding: '6px 16px', whiteSpace: 'nowrap' }}
+
                                     >
-                                        {columnNames[3]}
+                                        {
+                                            column.name !== '' && column.name !== '名称' && (
+                                                <TableSortLabel
+                                                    active={orderBy === column.name}
+                                                    direction={orderBy === column.name ? order : 'asc'}
+                                                    onClick={(event) => handleRequestSort(event, column.name)}
+                                                />
+                                            )
+                                        }
+
+                                        {column.name}
                                     </TableCell>
-                                    
-                                ) : null
-                            }
-                            {
-                                enableBackTrace ? (
-                                    <TableCell
-                                        key="threeday"
-                                        align="right"
-                                        padding='normal'
-                                        width={columnWidths[4]}
-                                    >
-                                        {columnNames[4]}
-                                    </TableCell>
-                                    
-                                ) : null
-                            }
-                            {
-                                enableBackTrace ? (
-                                    <TableCell
-                                        key="fiveday"
-                                        align="right"
-                                        padding='normal'
-                                        width={columnWidths[5]}
-                                    >
-                                        {columnNames[5]}
-                                    </TableCell>
-                                    
-                                ) : null
+                                ))
                             }
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {rows.map((row, index) => {
+                        {visiableRows.map((row, index) => {
                             const isItemSelected = selectedId === row.id;
                             const labelId = `enhanced-table-checkbox-${index}`;
 
@@ -191,48 +219,44 @@ export default function BackTracePriceTable({ enableBackTrace, columnNames, colu
                                         component="th"
                                         id={labelId}
                                         scope="row"
-                                        sx={{ width: columnWidths[0], borderLeft: isItemSelected ? '4px solid #1976d2' : '4px solid transparent' }}
+                                        sx={{ width: columns[0].width, borderLeft: isItemSelected ? '4px solid #1976d2' : '4px solid transparent' }}
                                         align="right"
                                     >
                                         {index}
                                     </TableCell>
-                                    <TableCell sx={{ width: columnWidths[1], borderLeft: '1px  rgba(81, 81, 81, 1) solid' }}>
+                                    <TableCell sx={{ width: columns[1].width, borderLeft: '1px  rgba(81, 81, 81, 1) solid' }}>
                                         <Typography variant="body2" noWrap>{row.name}</Typography>
                                     </TableCell>
                                     <TableCell align="right" sx={{
-                                        width: columnWidths[2],
+                                        width: columns[2].width,
                                         color: (row.change_pct > 0 ? '#ff3535' : row.change_pct === 0 ? 'unset' : '#20cf17'),
                                         borderLeft: '1px rgba(81, 81, 81, 1) solid',
                                     }}
-                                    >{row.change_pct.toFixed(2) + '%'
-                                        }</TableCell>
-                                    {
-                                        enableBackTrace ? (
-                                            <TableCell align="right" sx={{
-                                                width: columnWidths[3],
-                                                color: (row.afterDay > 0 ? '#ff3535' : row.afterDay === 0 ? 'unset' : '#20cf17'),
-                                                borderLeft: '1px rgba(81, 81, 81, 1) solid',
-                                            }}>{row.afterDay.toFixed(2) + '%'}</TableCell>
-                                        ) : null
-                                    }
-                                    {
-                                        enableBackTrace ? (
-                                            <TableCell align="right" sx={{
-                                                width: columnWidths[3],
-                                                color: (row.threeDay > 0 ? '#ff3535' : row.threeDay === 0 ? 'unset' : '#20cf17'),
-                                                borderLeft: '1px rgba(81, 81, 81, 1) solid',
-                                            }}>{row.threeDay.toFixed(2) + '%'}</TableCell>
-                                        ) : null
-                                    }
-                                    {
-                                        enableBackTrace ? (
-                                            <TableCell align="right" sx={{
-                                                width: columnWidths[3],
-                                                color: (row.fiveDay > 0 ? '#ff3535' : row.fiveDay === 0 ? 'unset' : '#20cf17'),
-                                                borderLeft: '1px rgba(81, 81, 81, 1) solid',
-                                            }}>{row.fiveDay.toFixed(2) + '%'}</TableCell>
-                                        ) : null
-                                    }
+                                    >
+                                        {row.change_pct.toFixed(2) + '%'}
+                                    </TableCell>
+
+                                    <TableCell align="right" sx={{
+                                        width: columns[3].width,
+                                        color: (row.afterDay > 0 ? '#ff3535' : row.afterDay === 0 ? 'unset' : '#20cf17'),
+                                        borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                    }}>
+                                        {row.afterDay.toFixed(2) + '%'}
+                                    </TableCell>
+
+                                    <TableCell align="right" sx={{
+                                        width: columns[4].width,
+                                        color: (row.threeDay > 0 ? '#ff3535' : row.threeDay === 0 ? 'unset' : '#20cf17'),
+                                        borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                    }}>{row.threeDay.toFixed(2) + '%'}</TableCell>
+
+
+                                    <TableCell align="right" sx={{
+                                        width: columns[5].width,
+                                        color: (row.fiveDay > 0 ? '#ff3535' : row.fiveDay === 0 ? 'unset' : '#20cf17'),
+                                        borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                    }}>{row.fiveDay.toFixed(2) + '%'}</TableCell>
+
                                 </TableRow>
                             );
                         })}

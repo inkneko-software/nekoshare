@@ -368,9 +368,6 @@ export default function StrategyExecutionPage() {
                     </FormGroup>
                  </Box> */}
                 <BackTracePriceTable
-                    enableBackTrace
-                    columnNames={['', '名称', '涨幅(%)', '次日', '三日', '五日']}
-                    columnWidths={['10%', '30%', '15%', '15%', '15%', '15%']}
                     selectedId={selectedId}
                     onSelectedChange={handleSelectChange}
                     rows={results.map((result, index) => ({
