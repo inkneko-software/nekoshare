@@ -89,7 +89,7 @@ interface BackTracePriceTableProps {
 
 export default function BackTracePriceTable({ rows, selectedId, onSelectedChange, fullHeight }: BackTracePriceTableProps) {
 
-    const [order, setOrder] = React.useState<'asc' | 'desc'>('asc');
+    const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
     const [orderBy, setOrderBy] = React.useState<'' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日'>('');
     const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
         if (selectedId === undefined) {
@@ -151,13 +151,13 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
         if (property === '' || property === '名称') {
             return;
         }
-        if (orderBy === property && order === 'desc') {
-            setOrder('asc');
+        if (orderBy === property && order === 'asc') {
+            setOrder('desc');
             setOrderBy('');
             return;
         }
-        const isAsc = orderBy === property && order === 'asc';
-        setOrder(isAsc ? 'desc' : 'asc');
+        const isAsc = orderBy === property && order === 'desc';
+        setOrder(isAsc ? 'asc' : 'desc');
         setOrderBy(property);
     };
 
