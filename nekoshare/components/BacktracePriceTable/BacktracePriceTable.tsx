@@ -187,13 +187,17 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
                                             column.name !== '' && column.name !== '名称' && (
                                                 <TableSortLabel
                                                     active={orderBy === column.name}
-                                                    direction={orderBy === column.name ? order : 'asc'}
+                                                    direction={orderBy === column.name ? order : 'desc'}
                                                     onClick={(event) => handleRequestSort(event, column.name)}
-                                                />
+                                                >
+                                                    {column.name}
+                                                </TableSortLabel>
                                             )
                                         }
+                                        {
+                                            (column.name === '' || column.name === '名称' ) && column.name
+                                        }
 
-                                        {column.name}
                                     </TableCell>
                                 ))
                             }
