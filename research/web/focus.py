@@ -17,7 +17,8 @@ from group_breakout.strategies.trend import get_rise_trend_line, get_down_trend_
 from group_breakout.strategies import trend
 import os
 import json
-
+import data.focus as focus
+from entity.LimitUpReason import LimitUpReason
 from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
 
@@ -36,17 +37,7 @@ def get_transaction(date: str):
     :param date: 日期
     :return: 
     """
-    global data
-    if not data:
-        with open('../../nekoshare-data/transaction_info/transaction_list.txt', 'r', encoding='utf-8') as f:
-            data = f.readlines()
-    
-    for line in data:
-        record_date, record = line.split(' | ')
-        if record_date == date:
-            return json.loads(record)
-
-    return JSONResponse(status_code=404, content={"message": "指定日期暂无龙虎榜信息"})
+    return focus.get_lhb_stock_list_by_date(date)
 
 @router.get(base_url + "/focus/get_transaction_info")
 def get_transaction_info(stock_code: str, date: str):
@@ -56,130 +47,81 @@ def get_transaction_info(stock_code: str, date: str):
     :param code: 股票代码
     :return: 
     """
-    req_date = datetime.strptime(date, '%Y-%m-%d')
-    with open(f'../../nekoshare-data/transaction_info/transaction_info_{req_date.strftime("%Y-%m-%d")}.txt', 'r', encoding='utf-8') as f:
-        data = f.readlines()
-    
-    for line in data:
-        record_code, record = line.split(' | ')
-        if record_code == stock_code:
-            return json.loads(record)
+    return focus.get_lhb_stock_detail(stock_code, date)
 
-    return JSONResponse(status_code=404, content={"message": "指定日期暂无龙虎榜信息"})
+
+@dataclass
+class HotMoneyTransaction:
+    hot_money_name: str
+    stock_code: str
+    stock_name: str
+    net_value: float
 
 @router.get(base_url + "/focus/get_hot_money_transaction")
-def get_hot_money_transaction(date: str):
+def get_hot_money_transaction(date: str) -> list[HotMoneyTransaction]:
     """
     获取游资某日的交易动向
+
+    :param date: 日期
+    :return: 字典类型，分别为买入和卖出榜。
     """
-    req_date = datetime.strptime(date, '%Y-%m-%d')
-    with open(f'../../nekoshare-data/transaction_info/transaction_info_{req_date.strftime("%Y-%m-%d")}.txt', 'r', encoding='utf-8') as f:
-        data = f.readlines()
-    one_day = {}
-    three_day = {}
-    for line in data:
-        record_code, record = line.split(' | ')
-        record = json.loads(record)
-        record = record['data']
-        stock_name = record['stock_name']
-        one_day_transactions = record['details']['one']
-        three_day_transactions = record['details']['three']
-        if len(one_day_transactions) != 0:
-            # 如果一日榜有多个数据，则暂时只取第一个
-            one_day_transactions = one_day_transactions[0]
-            for buy_item in one_day_transactions['buy_items']:
-                if len(buy_item['hot_money']) != 0:
-                    hot_money = buy_item['hot_money'][0]
-                    hot_money_name = hot_money['name']
-                    if one_day.get(hot_money_name) is None:
-                        one_day[hot_money_name] = {}
-
-                    if one_day[hot_money_name].get(stock_name) is None:
-                        one_day[hot_money_name][stock_name] = {}
-                        one_day[hot_money_name][stock_name]['buy_value'] = 0
-                        one_day[hot_money_name][stock_name]['sell_value'] = 0
-                    one_day[hot_money_name][stock_name]['buy_value'] += buy_item['buy_value']
-                    if buy_item['sell_value'] is not None:
-                        one_day[hot_money_name][stock_name]['sell_value'] += buy_item['sell_value']
-            
-            for sell_item in one_day_transactions['sell_items']:
-                if len(sell_item['hot_money']) != 0:
-                    hot_money = sell_item['hot_money'][0]
-                    hot_money_name = hot_money['name']
-                    if one_day.get(hot_money_name) is None:
-                        one_day[hot_money_name] = {}
-
-                    if one_day[hot_money_name].get(stock_name) is None:
-                        one_day[hot_money_name][stock_name] = {}
-                        one_day[hot_money_name][stock_name]['buy_value'] = 0
-                        one_day[hot_money_name][stock_name]['sell_value'] = 0
-                    one_day[hot_money_name][stock_name]['sell_value'] += sell_item['sell_value']
-                    if sell_item['buy_value'] is not None:
-                        one_day[hot_money_name][stock_name]['buy_value'] += sell_item['buy_value']
-
-        if len(three_day_transactions) != 0:
-            # 如果一日榜有多个数据，则暂时只取第一个
-            three_day_transactions = three_day_transactions[0]
-            for buy_item in three_day_transactions['buy_items']:
-                if len(buy_item['hot_money']) != 0:
-                    hot_money = buy_item['hot_money'][0]
-                    hot_money_name = hot_money['name']
-                    if three_day.get(hot_money_name) is None:
-                        three_day[hot_money_name] = {}
-
-                    if three_day[hot_money_name].get(stock_name) is None:
-                        three_day[hot_money_name][stock_name] = {}
-                        three_day[hot_money_name][stock_name]['buy_value'] = 0
-                        three_day[hot_money_name][stock_name]['sell_value'] = 0
-                    three_day[hot_money_name][stock_name]['buy_value'] += buy_item['buy_value']
-                    if buy_item['sell_value'] is not None:
-                        three_day[hot_money_name][stock_name]['sell_value'] += buy_item['sell_value']
-            
-            for sell_item in three_day_transactions['sell_items']:
-                if len(sell_item['hot_money']) != 0:
-                    hot_money = sell_item['hot_money'][0]
-                    hot_money_name = hot_money['name']
-                    if three_day.get(hot_money_name) is None:
-                        three_day[hot_money_name] = {}
-
-                    if three_day[hot_money_name].get(stock_name) is None:
-                        three_day[hot_money_name][stock_name] = {}
-                        three_day[hot_money_name][stock_name]['buy_value'] = 0
-                        three_day[hot_money_name][stock_name]['sell_value'] = 0
-                    three_day[hot_money_name][stock_name]['sell_value'] += sell_item['sell_value']
-                    if sell_item['buy_value'] is not None:
-                        three_day[hot_money_name][stock_name]['buy_value'] += sell_item['buy_value']
-
-    one_day_net_buy = []
-    one_day_net_sell = []
-    for hot_money_name in one_day.keys():
-        if hot_money_name == 'T王':
+    ret = []
+    # 获取席位与游资名称映射
+    hot_money_list = focus.get_hot_money_list()
+    hot_money_dict = {}
+    for hot_money in hot_money_list:
+        hot_money_dict[hot_money.department_name] = hot_money.hot_money_name
+        
+    stock_list = focus.get_lhb_stock_list_by_date(date)
+    for stock in stock_list:
+        if stock.stock_name.startswith(("*ST", "ST", "退", "退市")) or stock.stock_name.find("转债") != -1:
             continue
+        if stock.range_days != 1:
+            continue
+        
+        transaction_detail = focus.get_lhb_stock_detail(stock.stock_code, date)
 
-        tmp_buy = []
-        tmp_sell = []
-        for stock_name in one_day[hot_money_name].keys():
-            if stock_name.startswith(("*", "ST", "退", "N", "C")):
+        # 基于营业部合并买入与卖出数据，格式为 席位: 净买金额
+        concated_transaction = {}
+        for transaction in transaction_detail:
+            if stock.stock_code.startswith("6"):
+                #如果是上证则需要计算净买量
+                if transaction.trade_type == "buy":
+                    concated_transaction[transaction.name] = concated_transaction.get(transaction.name, 0) + transaction.buy_value
+                elif transaction.trade_type == "sell":
+                    concated_transaction[transaction.name] = concated_transaction.get(transaction.name, 0) - transaction.sell_value
+            else:
+                #如果是深证则直接使用净买金额
+                if concated_transaction.get(transaction.name) == None:
+                    concated_transaction[transaction.name] = transaction.net_value
+
+        # 基于游资名称进行合并，格式为 游资名称: 净买金额
+        concated_transaction_by_hot_money = {}
+
+        for department_name, net_value in concated_transaction.items():
+            hot_money_name = hot_money_dict.get(department_name)
+            if hot_money_name != None:
+                concated_transaction_by_hot_money[hot_money_name] = concated_transaction_by_hot_money.get(hot_money_name, 0) + net_value
+        
+        for hot_money_name, net_value in concated_transaction_by_hot_money.items():
+            if hot_money_name == 'T王':
                 continue
-            if one_day[hot_money_name][stock_name]['buy_value'] > one_day[hot_money_name][stock_name]['sell_value']:
-                tmp_buy.append({
-                    "stock_name": stock_name,
-                    "value": one_day[hot_money_name][stock_name]['buy_value'] - one_day[hot_money_name][stock_name]['sell_value'],
-                })
-            elif one_day[hot_money_name][stock_name]['buy_value'] < one_day[hot_money_name][stock_name]['sell_value']:
-                tmp_sell.append({
-                    "stock_name": stock_name,
-                    "value": one_day[hot_money_name][stock_name]['sell_value'] - one_day[hot_money_name][stock_name]['buy_value'],
-                })
-        if len(tmp_buy) != 0:
-            one_day_net_buy.append({
-                "name": hot_money_name,
-                "transactions": tmp_buy,
-            })
-        if len(tmp_sell) != 0:
-            one_day_net_sell.append({
-                "name": hot_money_name,
-                "transactions": tmp_sell,
-            })
 
-    return {"one_day_net_buy": one_day_net_buy, "one_day_net_sell": one_day_net_sell}
+            ret.append(HotMoneyTransaction(
+                hot_money_name=hot_money_name,
+                stock_code=stock.stock_code,
+                stock_name=stock.stock_name,
+                net_value=net_value
+            ))
+    return ret
+
+@router.get(base_url + "/focus/get_limit_up_reason")
+def get_limit_up_reason(date: str) -> list[LimitUpReason]:
+    """
+    获取某日的涨停原因列表
+
+    :param date: 日期
+    :return: 涨停原因列表
+    """
+    limit_up_reasons = focus.get_limit_up_reason_list(date)
+    return limit_up_reasons

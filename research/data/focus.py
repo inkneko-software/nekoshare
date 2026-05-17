@@ -80,6 +80,26 @@ def get_all_hot_money_names() -> list[str]:
     hot_money_names = [row[0] for row in result]
     return hot_money_names
 
+def get_hot_money_list() -> list[HotMoney]:
+    """
+    获取所有游资列表
+
+    :return: 游资列表
+    """
+
+    pool = MySQLConnectionPool()
+
+    result = pool.query(
+        "SELECT department_name, hot_money_name FROM hot_money"
+    )
+    hot_money_list = []
+    for row in result:
+        hot_money_list.append(HotMoney(
+            department_name=row[0],
+            hot_money_name=row[1]
+        ))
+    return hot_money_list
+
 def get_lhb_stock_list_by_date(date: str) -> list[LhbStockList]:
     """
     获取指定日期的龙虎榜个股列表
@@ -177,4 +197,4 @@ def get_limit_up_reason_list(date: str) -> list[LimitUpReason]:
     return limit_up_reasons
 
 if __name__ == "__main__":
-    print(get_limit_up_reason_list("2026-03-25"))
+    print(get_hot_money_list())
