@@ -64,7 +64,7 @@ const customizedScrollBarStyle = {
 
 export interface Transaction {
   stock_name: string,
-  value: number
+  net_value: number
 }
 
 export interface HotMoneyTransaction {
@@ -151,9 +151,9 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
                             align="left"
                             padding='normal'
                             width='25%'
-                            sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', color: transaction.value > 10000000 ? transactionType === 'buy' ? '#e23f3f' : '#42be23' : 'unset' }}
+                            sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', color: transaction.net_value > 10000000 ? transactionType === 'buy' ? '#e23f3f' : '#42be23' : 'unset' }}
                           >
-                            {transaction.stock_name + ' ' + formatValue(transaction.value)}
+                            {transaction.stock_name + ' ' + formatValue(transaction.net_value)}
                           </TableCell>
                         ))
                       }
@@ -187,9 +187,9 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
                                 align="left"
                                 padding='normal'
                                 width='25%'
-                                sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', color: transaction.value > 10000000 ? transactionType === 'buy' ? '#e23f3f' : '#42be23' : 'unset' }}
+                                sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', color: transaction.net_value > 10000000 ? transactionType === 'buy' ? '#e23f3f' : '#42be23' : 'unset' }}
                               >
-                                {transaction.stock_name + ' ' + formatValue(transaction.value)}
+                                {transaction.stock_name + ' ' + formatValue(transaction.net_value)}
                               </TableCell>
                             ))
                           }
