@@ -102,3 +102,64 @@ CREATE TABLE trade_account(
     account_name VARCHAR(50) NOT NULL DEFAULT '模拟账户' COMMENT '账户名称',
     
 )
+
+-- 游资营业部
+CREATE TABLE hot_money(
+    department_name VARCHAR(255) PRIMARY KEY COMMENT '营业部名称',
+    hot_money_name VARCHAR(255) NOT NULL COMMENT '关联的游资名称'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 龙虎榜个股列表
+CREATE TABLE lhb_stock_list(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
+    trade_date DATE NOT NULL COMMENT '交易日期',
+    stock_code VARCHAR(20) NOT NULL COMMENT '股票的纯数字代码，如601881',
+    stock_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '股票的名称，如中国银河',
+    range_days INT NOT NULL DEFAULT 0 COMMENT '时间范围，如1为1日榜，3为3日榜',
+    reason_list JSON NOT NULL COMMENT '上榜理由列表，格式为：["有价格涨跌幅限制的日收盘价格涨幅达到15%的证券", "有价格涨跌幅限制的日换手率达到30%的证券"]',
+    buy_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '买入金额',
+    sell_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '卖出金额',
+    net_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '净买金额',
+    hot_money_net_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '游资净买金额',
+    org_net_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '机构净买金额',
+    limit_reason VARCHAR(255) NOT NULL DEFAULT '' COMMENT '涨停原因',
+    concept_list JSON NOT NULL COMMENT '概念列表，格式为: [{"code": "885907", "name": "科创次新股"}, {"code": "886009", "name": "先进封装"}]',
+    UNIQUE(trade_date, stock_code, range_days)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 龙虎榜个股席位买卖数据
+CREATE TABLE lhb_stock_detail(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
+    trade_date DATE NOT NULL COMMENT '交易日期',
+    stock_code VARCHAR(20) NOT NULL COMMENT '股票的纯数字代码，如601881',
+    stock_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '股票的名称，如中国银河',
+    range_days INT NOT NULL DEFAULT 0 COMMENT '时间范围，如1为1日榜，3为3日榜',
+    trade_type ENUM('buy', 'sell') NOT NULL COMMENT '交易类型，为买榜或卖榜',
+    `name` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '席位名称，如 高盛（中国）证券有限责任公司上海浦东新区世纪大道证券营业部',
+    short_name VARCHAR(255) NOT NULL DEFAULT '' COMMENT '席位短名称，如 高盛(中国)上海浦东新区世纪大道证券营业部',
+    buy_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '买入金额',
+    sell_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '卖出金额',
+    net_value DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '净买金额',
+    INDEX(trade_date),
+    INDEX(stock_code),
+    INDEX(`name`),
+    INDEX(short_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 涨停原因
+CREATE TABLE limit_up_reason(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
+    trade_date DATE NOT NULL COMMENT '交易日期',
+    stock_code VARCHAR(20) NOT NULL COMMENT '股票的纯数字代码，如601881',
+    stock_name VARCHAR(50) NOT NULL DEFAULT '' COMMENT '股票的名称，如中国银河',
+    limit_up_type VARCHAR(50) NOT NULL DEFAULT '' COMMENT '涨停类型，如一字板、换手板等',
+    reason_type VARCHAR(255) NOT NULL DEFAULT '' COMMENT '涨停原因，如光通信+机器人+光电集成封测',
+    change_rate DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '涨跌幅，单位为百分比',
+    turnover_rate DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '换手率，单位为百分比',
+    high_days VARCHAR(20) NOT NULL DEFAULT '' COMMENT '连续涨停天数，如首板、二板、三板等',
+    first_limit_up_time TIMESTAMP NULL COMMENT '首次涨停时间',
+    last_limit_up_time TIMESTAMP NULL COMMENT '最后涨停时间',
+    INDEX(trade_date),
+    INDEX(stock_code),
+    UNIQUE(trade_date, stock_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
