@@ -74,7 +74,7 @@ def get_hot_money_transaction(date: str) -> list[HotMoneyTransaction]:
         
     stock_list = focus.get_lhb_stock_list_by_date(date)
     for stock in stock_list:
-        if stock.stock_name.startswith(("*ST", "ST", "退", "退市")) or stock.stock_name.find("转债") != -1:
+        if stock.stock_name.startswith(("*ST", "ST")) or stock.stock_name.find("转债") != -1 or stock.stock_name.find("退") != -1 or stock.stock_name.find("B") != -1:
             continue
         if stock.range_days != 1:
             continue
