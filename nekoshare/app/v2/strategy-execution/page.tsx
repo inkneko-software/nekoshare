@@ -53,6 +53,16 @@ interface BreakoutStrategyExecutingResult {
     reward?: Reward;
 }
 
+interface StockConcept {
+    id: number;
+    stock_code: string;
+    stock_name: string;
+    concept_code: string;
+    concept_name: string;
+    explain: string;
+    weight: number;
+}
+
 
 export default function StrategyExecutionPage() {
     const [isExecuting, setIsExecuting] = React.useState(false)
@@ -62,20 +72,12 @@ export default function StrategyExecutionPage() {
     const [rectangles, setRectangles] = React.useState<RectangleRegion[]>([])
     const [trendLines, setTrendLines] = React.useState<TrendLine[]>([])
     const [pressurePoints, setPressurePoints] = React.useState<PressurePoint[]>([])
-    const logRef = React.useRef(null)
     const [selectedTradeDate, setSelectedTradeDate] = React.useState<Dayjs>(dayjs(getLatestTradingDay()));
     const [selectedStrategy, setSelectedStrategy] = React.useState('volume_breakout_execution')
 
     const [selectedId, setSelectedId] = React.useState(-1)
 
-
-
-    React.useEffect(() => {
-        if (logRef.current !== null) {
-            let logContainer = logRef.current as HTMLElement;
-            logContainer.scrollTo({ top: logContainer.scrollHeight })
-        }
-    }, [results])
+    const [conceptList, setConceptList] = React.useState<StockConcept[]>([])
 
     const handleExecute = () => {
         setIsExecuting(true);
@@ -316,6 +318,25 @@ export default function StrategyExecutionPage() {
         }
     }, [selectedTradeDate])
 
+    React.useEffect(() => {
+        async function fetchConceptList() {
+            if (results.length > 0) {
+                let selectedResult = results[selectedId]
+                if (selectedResult !== undefined) {
+                    let marketId = selectedResult.code.startsWith('6') ? 17 : 33
+                    let resp = await fetch(`/api/pysdk/focus/get_stock_concept?stock_code=${selectedResult.code}`)
+                    if (resp.ok) {
+                        let data = await resp.json()
+                        console.log(data)
+                        setConceptList(data)
+                    }
+
+                }
+            }
+        }
+        fetchConceptList()
+    }, [selectedId])
+
     return (
         <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
             <Paper sx={{ width: '40%', display: 'flex', flexDirection: 'column' }} square>
@@ -387,16 +408,14 @@ export default function StrategyExecutionPage() {
                         endPoint: { time: trendLine.end_date, price: trendLine.high_price }
                     }))} pressurePoints={pressurePoints} highlightDate={(isTradingDay(selectedTradeDate) ? selectedTradeDate : getLatestTradingDay(selectedTradeDate)).format("YYYY-MM-DD")} />
                 </Box>
-                <Box ref={logRef} sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
-                    {
-                        results.map((result, index) => {
-                            return <Typography variant='body2' key={`log-${index}`}>
-                                {
-                                    `突破${(result.type === 'industry' ? '板块' : '个股')} ${result.code} ${result.name} + ${result.change_pct}%`
-                                }
-                            </Typography>
-                        })
-                    }
+                <Box sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
+                    {conceptList.map((concept) => (
+                        <Box key={concept.id} sx={{ padding: '8px', borderBottom: '1px #505a5e solid', display: 'flex', flexDirection: 'column' }}>
+                            <Typography variant='subtitle1'>{concept.concept_name} ({concept.concept_code}) 权重: {concept.weight.toFixed(2)}</Typography>
+                            <Typography variant='body2' color='text.secondary'>{concept.explain}</Typography>
+                        </Box>
+
+                    ))}
                 </Box>
             </Paper>
         </Box>
