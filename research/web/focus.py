@@ -20,6 +20,7 @@ import json
 import data.focus as focus
 from entity.LimitUpReason import LimitUpReason
 from utils.log import LoggerFactory
+from entity.StockConcept import StockConcept
 log = LoggerFactory.get_logger(__name__)
 
 base_url = "/api/pysdk"
@@ -125,3 +126,14 @@ def get_limit_up_reason(date: str) -> list[LimitUpReason]:
     """
     limit_up_reasons = focus.get_limit_up_reason_list(date)
     return limit_up_reasons
+
+@router.get(base_url + "/focus/get_stock_concept")
+def get_stock_concept(stock_code: str) -> list[StockConcept]:
+    """
+    获取个股的概念列表
+
+    :param stock_code: 股票代码
+    :return: 个股概念列表
+    """
+    stock_concepts = focus.get_stock_concept_list(stock_code)
+    return stock_concepts

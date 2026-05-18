@@ -21,7 +21,7 @@ from entity.HotMoney import HotMoney
 from entity.LhbStockDetail import LhbStockDetail
 from entity.LhbStockList import Concept, LhbStockList
 from entity.LimitUpReason import LimitUpReason
-
+from entity.StockConcept import StockConcept
 import data.cache as cache
 
 from utils.log import LoggerFactory
@@ -195,6 +195,32 @@ def get_limit_up_reason_list(date: str) -> list[LimitUpReason]:
             last_limit_up_time=str(row[10])
         ))
     return limit_up_reasons
+
+def get_stock_concept_list(stock_code: str) -> list[StockConcept]:
+    """
+    获取指定股票代码的概念列表
+
+    :param stock_code: 股票代码
+    :return: 概念列表
+    """
+
+    pool = MySQLConnectionPool()
+    result = pool.query(
+        "SELECT id, stock_code, stock_name, concept_code, concept_name, `explain`, weight FROM stock_concept WHERE stock_code = %s ORDER BY weight DESC",
+        (stock_code,)
+    )
+    concept_list = []
+    for row in result:
+        concept_list.append(StockConcept(
+            id=row[0],
+            stock_code=row[1],
+            stock_name=row[2],
+            concept_code=row[3],
+            concept_name=row[4],
+            explain=row[5],
+            weight=row[6]
+        ))
+    return concept_list
 
 if __name__ == "__main__":
     print(get_hot_money_list())
