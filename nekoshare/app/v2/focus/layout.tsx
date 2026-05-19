@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/zh-cn'
-import { getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
+import { getLatestTradingDay, getPrevTradingDay } from '@/lib/chinese-holidays/TradingDays';
 import { FocusContext } from '@/app/v2/focus/context';
+import { isTradingDay } from "@/lib/chinese-holidays/TradingDays";
 function FocusLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
     const routes = [
         { label: '概念热点', value: 'hot', href: '/v2/focus/hot' },
@@ -16,17 +17,16 @@ function FocusLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
     ]
     const router = useRouter();
     const pathName = usePathname();
-    const [selectedTradeDate, setSelectedTradeDate] = useState(getLatestTradingDay());
-
+    const [selectedTradeDate, setSelectedTradeDate] = useState(getLatestTradingDay().isSame(dayjs(), 'day') && (new Date()).getHours() < 16 ? getPrevTradingDay(getLatestTradingDay()) : getLatestTradingDay());
     const handleChange = (event: React.SyntheticEvent, href: string) => {
         router.push(href);
     };
 
-    
+
     return (
         <Paper sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }} square>
             <Box sx={{ display: 'flex', borderBottom: '1px solid #e0e0e0' }}>
-                <Tabs value={pathName} onChange={handleChange} aria-label="focus tabs" sx={{  margin: 'auto 0px' }}>
+                <Tabs value={pathName} onChange={handleChange} aria-label="focus tabs" sx={{ margin: 'auto 0px' }}>
                     {routes.map(route => (
                         <Tab key={route.value} label={route.label} value={route.href} />
                     ))}
@@ -37,7 +37,9 @@ function FocusLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
                         value={dayjs(selectedTradeDate)}
                         onChange={val => val && setSelectedTradeDate(val)}
                         slotProps={{ textField: { size: 'small' } }}
-                        sx={{margin: 'auto 8px auto auto' }} />
+                        sx={{ margin: 'auto 8px auto auto' }}
+                        shouldDisableDate={(date) => !isTradingDay(date) || date.isAfter(getLatestTradingDay())}
+                    />
                 </LocalizationProvider>
             </Box>
             <FocusContext.Provider value={{ selectedTradeDate }}>
