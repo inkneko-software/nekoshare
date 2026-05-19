@@ -151,7 +151,7 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
                             align="left"
                             padding='normal'
                             width='25%'
-                            sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', color: transaction.net_value > 10000000 ? transactionType === 'buy' ? '#e23f3f' : '#42be23' : 'unset' }}
+                            sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', color: Math.abs(transaction.net_value) > 10000000 ? transactionType === 'buy' ? '#e23f3f' : '#42be23' : 'unset' }}
                           >
                             {transaction.stock_name + ' ' + formatValue(transaction.net_value)}
                           </TableCell>
