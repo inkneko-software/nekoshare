@@ -83,9 +83,9 @@ export default function HotMoneyTransactionTable({ hotMoneyList, transactionType
   }
 
   function formatValue(value: number) {
-    if (value > 100000000) {
+    if (Math.abs(value) > 100000000) {
       return (value / 100000000).toFixed(2) + '亿'
-    } else if (value > 10000) {
+    } else if (Math.abs(value) > 10000) {
       return (value / 10000).toFixed(0) + '万'
     } else {
       return value.toFixed(2)

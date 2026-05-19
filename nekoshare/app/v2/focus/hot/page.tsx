@@ -181,7 +181,7 @@ function TransactionHeatmap({ lhbStockList }: { lhbStockList: LhbStockListItem[]
                     return '';
                 }
                 const data = info.data as TransactionTreemapNode;
-                return `${info.name}\n量: ${info.value >= 100000000 ? (info.value / 100000000).toFixed(2) + '亿' : (info.value / 10000).toFixed(2) + '万'}\n涨停原因：${data.item.limit_reason}\n所属概念：${data.item.concept_list.map(item => item.name).join('、')}`;
+                return `${info.name}\n量:  ${data.item.change < 0 ? '-': ''}${info.value >= 100000000 ? (info.value / 100000000).toFixed(2) + '亿' : (info.value / 10000).toFixed(2) + '万'}\n涨停原因：${data.item.limit_reason}\n所属概念：${data.item.concept_list.map(item => item.name).join('、')}`;
             }
         },
         series: [
