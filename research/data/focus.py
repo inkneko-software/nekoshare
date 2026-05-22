@@ -1,6 +1,6 @@
 import json
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from data.MySQLConnectionPool import MySQLConnectionPool
 import time
 import pandas as pd
@@ -27,6 +27,9 @@ import data.cache as cache
 from utils.log import LoggerFactory
 
 log = LoggerFactory.get_logger(__name__)
+
+redis_host = os.environ.get("REDIS_HOST")
+redis_port = os.environ.get("REDIS_PORT")
 
 
 def get_hot_money_departments(hot_money_name: str) -> list[str]:
@@ -222,5 +225,78 @@ def get_stock_concept_list(stock_code: str) -> list[StockConcept]:
         ))
     return concept_list
 
+def get_advance_decline_count(start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    获取指定时间范围内每日的涨跌家数，以日为粒度缓存到Redis
+
+    :param start_date: 开始日期，格式YYYY-MM-DD
+    :param end_date: 结束日期，格式YYYY-MM-DD
+    :return: 包含trade_date, advance_count, decline_count, flat_count的DataFrame
+    """
+
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    if end - start > timedelta(days=31):
+        return pd.DataFrame(columns=['trade_date', 'advance_count', 'decline_count', 'flat_count'])
+
+    dates = [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((end - start).days + 1)]
+
+    # 尝试从Redis缓存获取每日数据
+    r = redis.Redis(host=redis_host, port=int(redis_port), decode_responses=True)
+    cached = r.mget([f"advance_decline:{d}" for d in dates])
+
+    results = {}
+    uncached_dates = []
+    for i, val in enumerate(cached):
+        if val is not None:
+            results[dates[i]] = json.loads(val)
+        else:
+            uncached_dates.append(dates[i])
+
+    # 查询MySQL中缺失的日期
+    if uncached_dates:
+        pool = MySQLConnectionPool()
+        placeholders = ','.join(['%s'] * len(uncached_dates))
+        rows = pool.query(
+            f"SELECT trade_date, percent_change FROM stock_day_price WHERE trade_date IN ({placeholders})",
+            tuple(uncached_dates)
+        )
+
+        # 按日期分组计数
+        day_data = {}
+        for row in rows:
+            d = str(row[0])
+            if d not in day_data:
+                day_data[d] = {'advance': 0, 'decline': 0, 'flat': 0}
+            pct = row[1]
+            if pct > 0:
+                day_data[d]['advance'] += 1
+            elif pct < 0:
+                day_data[d]['decline'] += 1
+            else:
+                day_data[d]['flat'] += 1
+
+        for d in uncached_dates:
+            counts = day_data.get(d, {'advance': 0, 'decline': 0, 'flat': 0})
+            r.setex(f"advance_decline:{d}", 86400, json.dumps(counts))
+            results[d] = counts
+
+    result_df = pd.DataFrame([
+        {'trade_date': d, 'advance_count': results[d]['advance'],
+         'decline_count': results[d]['decline'], 'flat_count': results[d]['flat']}
+        for d in dates
+    ])
+    result_df = result_df[(result_df['advance_count'] != 0) | (result_df['decline_count'] != 0) | (result_df['flat_count'] != 0)]
+    return result_df
+
+
 if __name__ == "__main__":
-    print(get_hot_money_list())
+    for month in range(1, 13):
+        start = f"2025-{month:02d}-01"
+        if month == 12:
+            end = "2025-12-31"
+        else:
+            end = f"2025-{month+1:02d}-01"
+        df = get_advance_decline_count(start, end)
+        print(f"\n=== {start} ~ {end} ===")
+        print(df.to_string(index=False))

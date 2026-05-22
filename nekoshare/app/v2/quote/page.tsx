@@ -1,15 +1,20 @@
 'use client'
 import StockData from '@/lib/StockData';
-import StockDayPrice from '@/lib/StockDayPrice';
-import { Box, Container, Paper, Typography } from '@mui/material';
-import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries } from 'lightweight-charts';
-// TradingViewWidget.jsx
-import React, { useEffect, useRef, memo } from 'react';
+import { Box, Paper, Typography } from '@mui/material';
+import React, { useEffect } from 'react';
 import TradingViewWidget, { Candlestick, TrendLine } from '@/components/TradingViewWidget_v2';
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
 import { THSIndustryMarket, GetIndustriesResponse } from '@/app/api/ths/getIndustries/route';
 import { GetIndustryStocksResponse } from '@/app/api/ths/getIndustryStocks/route';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import ReactECharts from 'echarts-for-react';
+
+const riseColor = '#ec3a37';
+const fallColor = '#0093ad';
+
+function priceColor(change: number): string {
+    return change > 0 ? riseColor : fallColor;
+}
 
 export default function Home() {
     const [industries, setIndustries] = React.useState<THSIndustryMarket[]>([]);
@@ -20,6 +25,24 @@ export default function Home() {
 
     const [candlesticks, setCandlesticks] = React.useState<Candlestick[]>([]);
     const [trendLines, setTrendLines] = React.useState<TrendLine[]>([]);
+
+    const [advanceDeclineData, setAdvanceDeclineData] = React.useState<any[]>([]);
+
+    useEffect(() => {
+        async function fetchAdvanceDecline() {
+            try {
+                const end = "2025-05-31" // dayjs().format('YYYY-MM-DD');
+                const start = "2025-05-01" // dayjs().subtract(1, 'month').format('YYYY-MM-DD');
+                const response = await fetch(`/api/pysdk/focus/get_advance_decline_count?start_date=${start}&end_date=${end}`);
+                if (!response.ok) throw new Error('网络响应错误');
+                const data = await response.json();
+                setAdvanceDeclineData(data);
+            } catch (error) {
+                console.error('获取涨跌家数失败:', error);
+            }
+        }
+        fetchAdvanceDecline();
+    }, []);
 
     useEffect(() => {
 
@@ -88,7 +111,6 @@ export default function Home() {
                 }
                 let data = await response.json();
                 //转换数据格式
-                const formatter = new Intl.DateTimeFormat('en-CA')
                 const candlestickData: Candlestick[] = data.data.map((item: any) => ({
                     time: dayjs(item.trade_date).format("YYYY-MM-DD"),
                     open: item.open,
@@ -126,7 +148,6 @@ export default function Home() {
 
     const handleIndustrySelectedChanged = (index: number) => {
         if (index === -1) {
-            index = selectedIndustry
             return;
         }
         setSelectedIndustry(index);
@@ -149,9 +170,14 @@ export default function Home() {
         fetchIndustryStocks();
     }
 
+    const border = '1px solid rgba(0,0,0,0.12)';
+    const stock = selectedStock !== -1 ? industryStocks[selectedStock] : null;
+    const industry = selectedIndustry !== -1 ? industries[selectedIndustry] : null;
+
     return (
         <Box sx={{ display: 'flex', flexGrow: 1, height: 'calc(100vh - 64px)' }}>
-            <Box sx={{ width: '20%', borderRight: '1px black solid', height: '100%', overflow: 'auto' }}>
+            {/* 左侧：行业 + 个股列表 */}
+            <Box sx={{ width: '18%', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                 <CommonPriceTable
                     enablePrice={false}
                     columnNames={[' ', '板块名称', '涨幅(%)']}
@@ -160,8 +186,6 @@ export default function Home() {
                     selectedId={selectedIndustry}
                     onSelectedChange={handleIndustrySelectedChanged}
                 />
-            </Box>
-            <Box sx={{ width: '20%', borderRight: '1px black solid', height: '100%', overflow: 'auto' }}>
                 <CommonPriceTable
                     enablePrice={true}
                     columnNames={[' ', '名称', '涨幅(%)', '现价']}
@@ -171,62 +195,121 @@ export default function Home() {
                     onSelectedChange={(newSelected) => setSelectedStock(newSelected)}
                 />
             </Box>
-            <Box sx={{ width: '60%', display: 'flex', flexDirection: 'column' }}>
 
-                <Paper sx={{ height: '80%', borderBottom: '1px black solid' }} square>
+            {/* 中间：K线图 + 信息面板 */}
+            <Paper sx={{ width: '47%', display: 'flex', flexDirection: 'column', borderRight: border }} square>
+                <Box sx={{ flex: 1, minHeight: 0 }}>
                     <TradingViewWidget candlesticks={candlesticks} rectangles={[]} trendLines={trendLines} />
-                </Paper>
-                <Paper sx={{ height: '20%', borderBottom: '1px black solid' }} square>
-                    {
-                        (selectedIndustry !== -1 || selectedStock !== -1) && (
-                            <>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                </Box>
+                <Box sx={{ borderTop: border, px: 1.5, py: 0.5, minHeight: 80 }}>
+                    {stock && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                                <Typography variant='h6' fontWeight={600}>{stock.stock_name}</Typography>
+                                <Typography variant='body2' color='text.secondary'>{stock.stock_code}</Typography>
+                                <Typography variant='h6' sx={{ color: priceColor(stock.percent_change), ml: 'auto' }}>
+                                    {stock.price.toFixed(2)}
+                                </Typography>
+                                <Typography variant='body2' sx={{ color: priceColor(stock.percent_change), fontWeight: 500 }}>
+                                    {stock.percent_change > 0 ? '+' : ''}{(stock.price - stock.pre_close).toFixed(2)}
+                                    {' '}{stock.percent_change > 0 ? '+' : ''}{stock.percent_change.toFixed(2)}%
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                <Typography variant='body2' sx={{ color: priceColor(stock.open - stock.pre_close) }}>
+                                    开 {stock.open.toFixed(2)}
+                                </Typography>
+                                <Typography variant='body2' color='text.secondary'>
+                                    收 {stock.pre_close.toFixed(2)}
+                                </Typography>
+                                <Typography variant='body2' sx={{ color: priceColor(stock.high - stock.pre_close) }}>
+                                    高 {stock.high.toFixed(2)}
+                                </Typography>
+                                <Typography variant='body2' sx={{ color: priceColor(stock.low - stock.pre_close) }}>
+                                    低 {stock.low.toFixed(2)}
+                                </Typography>
+                                <Typography variant='body2' color='text.secondary'>
+                                    流通股 {stock.float_share}
+                                </Typography>
+                                <Typography variant='body2' color='text.secondary'>
+                                    市值 {stock.float_cap}亿
+                                </Typography>
+                                <Typography variant='body2' color='text.secondary'>
+                                    市盈率 {stock.pe_ratio.toFixed(2)}
+                                </Typography>
+                                <Typography variant='body2' color='text.secondary'>
+                                    {stock.industry} {stock.area}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    )}
+                    {!stock && industry && (
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5 }}>
+                            <Typography variant='h6' fontWeight={600}>{industry.name}</Typography>
+                            <Typography variant='body2' color='text.secondary'>{industry.code}</Typography>
+                            <Typography variant='h6' sx={{ color: priceColor(industry.change_pct) }}>
+                                {industry.change_pct > 0 ? '+' : ''}{industry.change_pct.toFixed(2)}%
+                            </Typography>
+                        </Box>
+                    )}
+                </Box>
+            </Paper>
 
-                                    <Typography variant='h5' sx={{ margin: 1 }}>
-                                        {
-                                            selectedStock !== -1 ? industryStocks[selectedStock].stock_name : selectedIndustry !== -1 ? industries[selectedIndustry].name : ''
-                                        }
-                                    </Typography>
-                                    <Typography variant='h6' sx={{ margin: 1 }}>
-                                        {
-                                            selectedStock !== -1 ? industryStocks[selectedStock].stock_code : selectedIndustry !== -1 ? industries[selectedIndustry].code : ''
-                                        }
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', '.MuiTypography-root': { margin: 1, minWidth: '96px' } }}>
+            {/* 右侧：涨跌家数 + 情绪 */}
+            <Box sx={{ width: '35%', display: 'flex', flexDirection: 'column' }}>
+                <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 0 }} square>
+                    <Typography variant='subtitle2' sx={{ px: 1.5, pt: 1, color: 'text.secondary' }}>
+                        每日涨跌家数
+                    </Typography>
+                    <Box sx={{ flex: 1, minHeight: 0 }}>
+                        <ReactECharts
+                            style={{ height: '100%', width: '100%' }}
+                            option={{
+                                tooltip: { trigger: 'axis' },
+                                legend: { data: ['上涨', '下跌'], top: 2, right: 10, textStyle: { fontSize: 11 }, selected: { '上涨': true, '下跌': false } },
+                                grid: { left: 36, right: 8, top: 28, bottom: 18 },
+                                xAxis: {
+                                    type: 'category',
+                                    data: advanceDeclineData.map((d: any) => d.trade_date.slice(5)),
+                                    axisLabel: { fontSize: 10, interval: 3 },
+                                    axisLine: { lineStyle: { color: '#e0e0e0' } },
+                                    splitLine: { show: false },
+                                },
+                                yAxis: {
+                                    type: 'value',
+                                    axisLabel: { fontSize: 10 },
+                                    splitLine: { lineStyle: { color: '#f5f5f5' } },
+                                },
+                                series: [
                                     {
-                                        selectedStock !== -1 && <Box sx={{ display: 'flex', }}>
-                                            <Typography variant='h6' sx={{ color: industryStocks[selectedStock].percent_change > 0 ? '#ec3a37' : '#0093ad' }}>{industryStocks[selectedStock].price.toFixed(2)}</Typography>
-                                            <Typography sx={{ color: industryStocks[selectedStock].open - industryStocks[selectedStock].pre_close > 0 ? '#ec3a37' : '#0093ad' }}>今开 {industryStocks[selectedStock].open.toFixed(2)}</Typography>
-                                            <Typography>昨收 {industryStocks[selectedStock].pre_close.toFixed(2)}</Typography>
-                                            <Typography sx={{ color: industryStocks[selectedStock].high - industryStocks[selectedStock].pre_close > 0 ? '#ec3a37' : '#0093ad' }}>最高 {industryStocks[selectedStock].high.toFixed(2)}</Typography>
-                                            <Typography sx={{ color: industryStocks[selectedStock].low - industryStocks[selectedStock].pre_close > 0 ? '#ec3a37' : '#0093ad' }}>最低 {industryStocks[selectedStock].low.toFixed(2)}</Typography>
-                                        </Box>
-                                    }
+                                        name: '上涨',
+                                        type: 'line',
+                                        data: advanceDeclineData.map((d: any) => d.advance_count),
+                                        smooth: true,
+                                        lineStyle: { width: 2, color: riseColor },
+                                        itemStyle: { color: riseColor },
+                                        areaStyle: { color: 'rgba(236, 58, 55, 0.08)' },
+                                        symbol: 'none',
+                                    },
                                     {
-                                        selectedStock !== -1 && <Box sx={{ display: 'flex' }}>
-                                            <Typography sx={{ width: 'fit-content !importent', color: industryStocks[selectedStock].percent_change > 0 ? '#ec3a37' : '#0093ad' }}>{`${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : ''}${(industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close).toFixed(2)} ${industryStocks[selectedStock].price - industryStocks[selectedStock].pre_close > 0 ? '+' : ''}${industryStocks[selectedStock].percent_change.toFixed(2)}%`}</Typography>
-                                            <Typography>流通股 {industryStocks[selectedStock].float_share}</Typography>
-                                            <Typography>流通市值 {industryStocks[selectedStock].float_cap}亿</Typography>
-                                            <Typography>市盈率 {industryStocks[selectedStock].pe_ratio.toFixed(2)}</Typography>
-                                            <Typography>行业 {industryStocks[selectedStock].industry}</Typography>
-                                            <Typography>地区 {industryStocks[selectedStock].area}</Typography>
-                                        </Box>
-                                    }
-                                    {
-                                        selectedStock === -1 && selectedIndustry !== -1 && <Typography variant='h6' sx={{ color: industries[selectedIndustry].change_pct > 0 ? '#ec3a37' : '#0093ad' }}>{industries[selectedIndustry].change_pct > 0 ? '+' : ''}{industries[selectedIndustry].change_pct.toFixed(2) + '%'}</Typography>
-                                    }
-                                </Box>
-                            </>
-                        )
-                    }
-
+                                        name: '下跌',
+                                        type: 'line',
+                                        data: advanceDeclineData.map((d: any) => d.decline_count),
+                                        smooth: true,
+                                        lineStyle: { width: 2, color: fallColor },
+                                        itemStyle: { color: fallColor },
+                                        areaStyle: { color: 'rgba(0, 147, 173, 0.08)' },
+                                        symbol: 'none',
+                                    },
+                                ],
+                            }}
+                        />
+                    </Box>
                 </Paper>
-                {/* <Paper sx={{ height: '20%' }} square>
-                    大盘数据
-                </Paper> */}
+                <Paper sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50%', borderRadius: 0 }} square>
+                    <Typography variant='body2' color='text.secondary'>可能的情绪冰点</Typography>
+                </Paper>
             </Box>
         </Box>
     )
 }
-
