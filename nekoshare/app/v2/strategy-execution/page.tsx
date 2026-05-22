@@ -12,8 +12,7 @@ import BackTracePriceTable from '@/components/BacktracePriceTable/BacktracePrice
 import StockDayPrice from '@/lib/StockDayPrice';
 import THSIndustryDayPrice from '@/lib/THSIndustryDayPrice';
 import PressurePoint from '@/lib/PressurePoint';
-import { getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
-import { isTradingDay } from '../../../lib/chinese-holidays/TradingDays';
+import { isTradingDay, getLatestTradingDay } from'@/lib/chinese-holidays/TradingDays';
 
 interface Reward {
     afterDay: number
