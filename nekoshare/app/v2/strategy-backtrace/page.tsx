@@ -1,10 +1,12 @@
 'use client'
-import { Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Typography } from '@mui/material';
+import { Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Typography, TableSortLabel } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import React from 'react';
+import { isTradingDay, getLatestTradingDay } from'@/lib/chinese-holidays/TradingDays';
+import 'dayjs/locale/zh-cn'
 
 interface TradeHistory {
     stock_code: string;
@@ -16,14 +18,18 @@ interface TradeHistory {
     change_pct: number;
 }
 
+type SortDir = 'asc' | 'desc';
+
 export default function VolumeBreakoutBacktestPage() {
-    const [tradeDate, setTradeDate] = React.useState<Dayjs>(dayjs());
+    const [tradeDate, setTradeDate] = React.useState<Dayjs>(dayjs(getLatestTradingDay()));
     const [results, setResults] = React.useState<TradeHistory[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
+    const [sortDir, setSortDir] = React.useState<SortDir | null>(null);
 
     const handleExecute = async () => {
         setIsLoading(true);
         setResults([]);
+        setSortDir(null);
         try {
             const dateStr = tradeDate.format('YYYYMMDD');
             const response = await fetch(`/api/pysdk/trade/getTradeResults?date=${dateStr}`);
@@ -37,13 +43,24 @@ export default function VolumeBreakoutBacktestPage() {
         }
     };
 
+    const handleSortToggle = () => {
+        setSortDir(prev => prev === 'desc' ? 'asc' : 'desc');
+    };
+
+    const sortedResults = React.useMemo(() => {
+        if (sortDir === null) return results;
+        return [...results].sort((a, b) =>
+            sortDir === 'asc' ? a.change_pct - b.change_pct : b.change_pct - a.change_pct
+        );
+    }, [results, sortDir]);
+
     const totalCount = results.length;
     const winCount = results.filter(r => r.change_pct > 0).length;
     const winRate = totalCount > 0 ? (winCount / totalCount * 100).toFixed(2) : '0.00';
 
     return (
-        <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }} >
-            <Paper sx={{ display: 'flex', padding: '16px', alignItems: 'center', gap: 2}} square>
+        <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+            <Paper sx={{ display: 'flex', padding: '16px', alignItems: 'center', gap: 2 }} square>
                 <Typography variant="h6" sx={{ mr: 1, whiteSpace: 'nowrap' }}>高量突破回测</Typography>
                 <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
                     <DatePicker
@@ -52,6 +69,7 @@ export default function VolumeBreakoutBacktestPage() {
                         value={tradeDate}
                         onChange={val => val && setTradeDate(val)}
                         slotProps={{ textField: { size: 'small' } }}
+                        shouldDisableDate={(date) => !isTradingDay(date) || date.isAfter(getLatestTradingDay())}
                     />
                 </LocalizationProvider>
                 <Button variant="outlined" onClick={handleExecute} disabled={isLoading}>
@@ -62,7 +80,7 @@ export default function VolumeBreakoutBacktestPage() {
                         <Typography variant="body2" color="text.secondary">
                             共 {totalCount} 只
                         </Typography>
-                        <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>
+                        <Typography variant="body2" color="error.main" sx={{ fontWeight: 'bold' }}>
                             胜率 {winRate}%
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
@@ -82,18 +100,26 @@ export default function VolumeBreakoutBacktestPage() {
                             <TableCell sx={{ fontWeight: 'bold' }}>卖出日期</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }} align="right">卖出价格</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>离场原因</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }} align="right">收益率</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }} align="right">
+                                <TableSortLabel
+                                    active={sortDir !== null}
+                                    direction={sortDir ?? 'desc'}
+                                    onClick={handleSortToggle}
+                                >
+                                    收益率
+                                </TableSortLabel>
+                            </TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {results.length === 0 ? (
+                        {sortedResults.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                                     {isLoading ? '正在计算...' : '选择日期并点击"执行回测"查看结果'}
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            results.map((row, index) => (
+                            sortedResults.map((row, index) => (
                                 <TableRow key={index} hover>
                                     <TableCell>{row.stock_code}</TableCell>
                                     <TableCell>{row.buy_date}</TableCell>
@@ -111,11 +137,11 @@ export default function VolumeBreakoutBacktestPage() {
                                     <TableCell
                                         align="right"
                                         sx={{
-                                            color: row.change_pct >= 0 ? 'success.main' : 'error.main',
+                                            color: row.change_pct >= 0 ? 'error.main' : 'success.main',
                                             fontWeight: 'bold',
                                         }}
                                     >
-                                        {(row.change_pct * 100).toFixed(2)}%
+                                        {row.change_pct >= 0 ? '+' : ''}{(row.change_pct * 100).toFixed(2)}%
                                     </TableCell>
                                 </TableRow>
                             ))
