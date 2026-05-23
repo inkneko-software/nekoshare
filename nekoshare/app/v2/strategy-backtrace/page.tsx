@@ -10,6 +10,7 @@ import 'dayjs/locale/zh-cn'
 
 interface TradeHistory {
     stock_code: string;
+    stock_name: string;
     buy_date: string;
     buy_price: number;
     sell_date: string;
@@ -26,16 +27,33 @@ export default function VolumeBreakoutBacktestPage() {
     const [isLoading, setIsLoading] = React.useState(false);
     const [sortDir, setSortDir] = React.useState<SortDir | null>(null);
 
+    const [conceptMap, setConceptMap] = React.useState<Record<string, string>>({});
+
     const handleExecute = async () => {
         setIsLoading(true);
         setResults([]);
         setSortDir(null);
+        setConceptMap({});
         try {
             const dateStr = tradeDate.format('YYYYMMDD');
             const response = await fetch(`/api/pysdk/trade/getTradeResults?date=${dateStr}`);
             if (!response.ok) throw new Error('请求失败');
             const data: TradeHistory[] = await response.json();
             setResults(data);
+
+            // 批量获取概念
+            const stockCodes = [...new Set(data.map(r => r.stock_code))];
+            const map: Record<string, string> = {};
+            await Promise.all(stockCodes.map(async (code) => {
+                try {
+                    const res = await fetch(`/api/pysdk/focus/get_stock_concept?stock_code=${code}`);
+                    if (res.ok) {
+                        const concepts: { concept_name: string }[] = await res.json();
+                        map[code] = concepts.slice(0, 3).map(c => c.concept_name).join('+');
+                    }
+                } catch { }
+            }));
+            setConceptMap(map);
         } catch (error) {
             console.error('回测执行失败:', error);
         } finally {
@@ -95,6 +113,8 @@ export default function VolumeBreakoutBacktestPage() {
                     <TableHead>
                         <TableRow>
                             <TableCell sx={{ fontWeight: 'bold' }}>股票代码</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>股票名称</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>概念</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>买入日期</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }} align="right">买入价格</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>卖出日期</TableCell>
@@ -114,7 +134,7 @@ export default function VolumeBreakoutBacktestPage() {
                     <TableBody>
                         {sortedResults.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                                     {isLoading ? '正在计算...' : '选择日期并点击"执行回测"查看结果'}
                                 </TableCell>
                             </TableRow>
@@ -122,6 +142,10 @@ export default function VolumeBreakoutBacktestPage() {
                             sortedResults.map((row, index) => (
                                 <TableRow key={index} hover>
                                     <TableCell>{row.stock_code}</TableCell>
+                                    <TableCell>{row.stock_name}</TableCell>
+                                    <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {conceptMap[row.stock_code] || '-'}
+                                    </TableCell>
                                     <TableCell>{row.buy_date}</TableCell>
                                     <TableCell align="right">{row.buy_price.toFixed(2)}</TableCell>
                                     <TableCell>{row.sell_date}</TableCell>
