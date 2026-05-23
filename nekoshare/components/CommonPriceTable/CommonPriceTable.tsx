@@ -94,12 +94,13 @@ export default function CommonPriceTable({ enablePrice, columnNames, columnWidth
     };
 
     return (
-        <Paper sx={{ height: '100%', width: '100%', overflow: 'auto', ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle } }} square>
-            <TableContainer>
+        <Paper sx={{ height: '100%', width: '100%' }} square>
+            <TableContainer sx={{ maxHeight: '100%', overflow: 'auto', ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle } }}>
                 <Table
                     aria-labelledby="tableTitle"
                     size='small'
                     sx={{ tableLayout: 'fixed' }}
+                    stickyHeader
                 >
                     <TableHead>
                         <TableRow>
