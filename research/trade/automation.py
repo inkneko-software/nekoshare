@@ -44,6 +44,7 @@ def calculateMA(prices, n):
 @dataclass
 class TradeHistory:
     stock_code: str
+    stock_name: str
     buy_date: str
     buy_price: float
     sell_date: str
@@ -52,7 +53,7 @@ class TradeHistory:
     change_pct: float
 
 
-def tradeNextDay(trade_date: str):
+def tradeNextDay(trade_date: str) -> list[TradeHistory]:
     """
     获取指定日期的选股结果，并于下一交易日开始按照要求进行交易
     
@@ -87,13 +88,13 @@ def tradeNextDay(trade_date: str):
                 ma5 = calculateMA([p.close for p in prices[:6+i]], 5)
                 if price.close < ma5:
 
-                    results.append(TradeHistory(result.code, prices[6].trade_date, buy_price, price.trade_date, price.close, "跌破5日线", (price.close - buy_price) / buy_price))
+                    results.append(TradeHistory(result.code, result.name, prices[6].trade_date.strftime("%Y-%m-%d"), buy_price, price.trade_date.strftime("%Y-%m-%d"), price.close, "跌破5日线", (price.close - buy_price) / buy_price))
                     break
                 elif price.close <= price.pre_close * 0.9:
-                    results.append(TradeHistory(result.code, prices[6].trade_date, buy_price, price.trade_date, price.close, "跌停", (price.close - buy_price) / buy_price))
+                    results.append(TradeHistory(result.code, result.name, prices[6].trade_date.strftime("%Y-%m-%d"), buy_price, price.trade_date.strftime("%Y-%m-%d")  , price.close, "跌停", (price.close - buy_price) / buy_price))
                     break
                 elif i == 9:
-                    results.append(TradeHistory(result.code, prices[6].trade_date, buy_price, price.trade_date, price.close, "仍持有计算收益", (price.close - buy_price) / buy_price))
+                    results.append(TradeHistory(result.code, result.name, prices[6].trade_date.strftime("%Y-%m-%d"), buy_price, price.trade_date.strftime("%Y-%m-%d"), price.close, "仍持有计算收益", (price.close - buy_price) / buy_price))
                     break
     return results
 

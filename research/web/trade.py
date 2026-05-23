@@ -15,7 +15,7 @@ from datetime import timedelta, date, datetime
 from model import *
 from group_breakout.strategies.trend import get_rise_trend_line, get_down_trend_line
 from group_breakout.strategies import trend
-from trade.automation import tradeNextDay
+from trade.automation import TradeHistory, tradeNextDay
 import os
 # class Input(BaseModel):
 #     a: float
@@ -30,7 +30,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 @router.get(base_url + "/trade/getTradeResults")
-def getTradeResults(date: str = None):
+def getTradeResults(date: str = None) -> list[TradeHistory]:
     """
     获取某日的高量突破结果，并回测后10个交易日的表现
 
