@@ -9,6 +9,55 @@ import { GetIndustryStocksResponse } from '@/app/api/ths/getIndustryStocks/route
 import dayjs from 'dayjs';
 import ReactECharts from 'echarts-for-react';
 
+interface StockConcept {
+    id: number;
+    stock_code: string;
+    stock_name: string;
+    concept_code: string;
+    concept_name: string;
+    explain: string;
+    weight: number;
+}
+
+const customizedHiddenScrollBarStyle = {
+    '::-webkit-scrollbar': {
+        width: '6px',
+        height: ' 8px',
+        backgroundColor: 'rgba(0,0,0,0)', /* or add it to the track */
+        borderRadius: '4px',
+    },
+    '::-webkit-scrollbar-thumb': {
+        background: 'rgba(0,0,0,0)',
+        borderRadius: '4px',
+    },
+    '::-webkit-scrollbar-thumb:hover': {
+        background: 'rgba(0,0,0,0)',
+        borderRadius: '4px',
+    },
+    '::-webkit-scrollbar-track': {
+
+    }
+}
+const customizedScrollBarStyle = {
+    '::-webkit-scrollbar': {
+        width: '6px',
+        height: ' 8px',
+        backgroundColor: '#171b2e', /* or add it to the track */
+        borderRadius: '4px',
+    },
+    '::-webkit-scrollbar-thumb': {
+        background: '#232947',
+        borderRadius: '4px',
+    },
+    '::-webkit-scrollbar-thumb:hover': {
+        background: '#293053',
+        borderRadius: '4px',
+    },
+    '::-webkit-scrollbar-track': {
+
+    }
+}
+
 const riseColor = '#ec3a37';
 const fallColor = '#0093ad';
 
@@ -27,12 +76,13 @@ export default function Home() {
     const [trendLines, setTrendLines] = React.useState<TrendLine[]>([]);
 
     const [advanceDeclineData, setAdvanceDeclineData] = React.useState<any[]>([]);
+    const [conceptList, setConceptList] = React.useState<StockConcept[]>([]);
 
     useEffect(() => {
         async function fetchAdvanceDecline() {
             try {
-                const end = "2025-05-31" // dayjs().format('YYYY-MM-DD');
-                const start = "2025-05-01" // dayjs().subtract(1, 'month').format('YYYY-MM-DD');
+                const end = dayjs().format('YYYY-MM-DD');
+                const start = dayjs().subtract(1, 'month').format('YYYY-MM-DD');
                 const response = await fetch(`/api/pysdk/focus/get_advance_decline_count?start_date=${start}&end_date=${end}`);
                 if (!response.ok) throw new Error('网络响应错误');
                 const data = await response.json();
@@ -146,6 +196,26 @@ export default function Home() {
         fetchCandlesticks();
     }, [selectedIndustry, selectedStock]);
 
+    useEffect(() => {
+        async function fetchConceptList() {
+            if (selectedStock === -1) {
+                setConceptList([]);
+                return;
+            }
+            try {
+                let stockCode = industryStocks[selectedStock].stock_code;
+                let resp = await fetch(`/api/pysdk/focus/get_stock_concept?stock_code=${stockCode}`);
+                if (resp.ok) {
+                    let data = await resp.json();
+                    setConceptList(data);
+                }
+            } catch (error) {
+                console.error('获取概念列表失败:', error);
+            }
+        }
+        fetchConceptList();
+    }, [selectedStock]);
+
     const handleIndustrySelectedChanged = (index: number) => {
         if (index === -1) {
             return;
@@ -177,31 +247,36 @@ export default function Home() {
     return (
         <Box sx={{ display: 'flex', flexGrow: 1, height: 'calc(100vh - 64px)' }}>
             {/* 左侧：行业 + 个股列表 */}
-            <Box sx={{ width: '18%', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-                <CommonPriceTable
-                    enablePrice={false}
-                    columnNames={[' ', '板块名称', '涨幅(%)']}
-                    columnWidths={['10%', '60%', '30%']}
-                    rows={industries.map((industry, index) => ({ id: index, code: industry.code, name: industry.name, change_pct: industry.change_pct }))}
-                    selectedId={selectedIndustry}
-                    onSelectedChange={handleIndustrySelectedChanged}
-                />
-                <CommonPriceTable
-                    enablePrice={true}
-                    columnNames={[' ', '名称', '涨幅(%)', '现价']}
-                    columnWidths={['10%', '30%', '30%', '30%']}
-                    selectedId={selectedStock}
-                    rows={industryStocks.map((stock, index) => ({ id: index, code: stock.stock_code, name: stock.stock_name, change_pct: stock.percent_change, price: stock.price }))}
-                    onSelectedChange={(newSelected) => setSelectedStock(newSelected)}
-                />
+            <Box sx={{ width: '20%', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ height: '50%', maxHeight: '50%' }}>
+                    <CommonPriceTable
+                        enablePrice={false}
+                        columnNames={[' ', '板块名称', '涨幅(%)']}
+                        columnWidths={['10%', '60%', '30%']}
+                        rows={industries.map((industry, index) => ({ id: index, code: industry.code, name: industry.name, change_pct: industry.change_pct }))}
+                        selectedId={selectedIndustry}
+                        onSelectedChange={handleIndustrySelectedChanged}
+                    />
+                </Box>
+                <Box sx={{ height: '50%', maxHeight: '50%' }}>
+                    <CommonPriceTable
+                        enablePrice={true}
+                        columnNames={[' ', '名称', '涨幅(%)', '现价']}
+                        columnWidths={['10%', '30%', '30%', '30%']}
+                        selectedId={selectedStock}
+                        rows={industryStocks.map((stock, index) => ({ id: index, code: stock.stock_code, name: stock.stock_name, change_pct: stock.percent_change, price: stock.price }))}
+                        onSelectedChange={(newSelected) => setSelectedStock(newSelected)}
+                    />
+                </Box>
+
             </Box>
 
             {/* 中间：K线图 + 信息面板 */}
-            <Paper sx={{ width: '47%', display: 'flex', flexDirection: 'column', borderRight: border }} square>
-                <Box sx={{ flex: 1, minHeight: 0 }}>
+            <Paper sx={{ width: '35%', display: 'flex', flexDirection: 'column' }} square elevation={0}>
+                <Box sx={{ flex: 1, minHeight: 0, height: '50%' }}>
                     <TradingViewWidget candlesticks={candlesticks} rectangles={[]} trendLines={trendLines} />
                 </Box>
-                <Box sx={{ borderTop: border, px: 1.5, py: 0.5, minHeight: 80 }}>
+                <Box sx={{ borderTop: border, px: 1.5, py: 0.5, minHeight: 80, height: '50%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {stock && (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
@@ -252,11 +327,25 @@ export default function Home() {
                             </Typography>
                         </Box>
                     )}
+                    <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', mt: 1, ...customizedHiddenScrollBarStyle, ':hover': { ...customizedScrollBarStyle } }}>
+                        {conceptList.map((concept) => (
+                            <Box key={concept.id} sx={{ py: 0.5, borderBottom: '1px solid #f0f0f0' }}>
+                                <Typography variant='body2'>
+                                    {concept.concept_name} <Typography component='span' variant='caption' color='text.secondary'>权重: {concept.weight.toFixed(2)}</Typography>
+                                </Typography>
+                                {concept.explain && (
+                                    <Typography variant='caption' color='text.secondary' sx={{ display: 'block', lineHeight: 1.3 }}>
+                                        {concept.explain}
+                                    </Typography>
+                                )}
+                            </Box>
+                        ))}
+                    </Box>
                 </Box>
             </Paper>
 
             {/* 右侧：涨跌家数 + 情绪 */}
-            <Box sx={{ width: '35%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', maxWidth: '50%', overflow: 'hidden' }}>
                 <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 0 }} square>
                     <Typography variant='subtitle2' sx={{ px: 1.5, pt: 1, color: 'text.secondary' }}>
                         每日涨跌家数
@@ -278,7 +367,7 @@ export default function Home() {
                                 yAxis: {
                                     type: 'value',
                                     axisLabel: { fontSize: 10 },
-                                    splitLine: { lineStyle: { color: '#f5f5f5' } },
+                                    splitLine: { show: false },
                                 },
                                 series: [
                                     {
@@ -290,6 +379,14 @@ export default function Home() {
                                         itemStyle: { color: riseColor },
                                         areaStyle: { color: 'rgba(236, 58, 55, 0.08)' },
                                         symbol: 'none',
+                                        markLine: {
+                                            silent: true,
+                                            animation: false,
+                                            data: [
+                                                { yAxis: 3000, lineStyle: { color: '#999', type: 'dashed' }, label: { formatter: '3000', fontSize: 10 } },
+                                                { yAxis: 1000, lineStyle: { color: '#999', type: 'dashed' }, label: { formatter: '1000', fontSize: 10 } },
+                                            ],
+                                        },
                                     },
                                     {
                                         name: '下跌',
