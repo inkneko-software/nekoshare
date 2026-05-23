@@ -1,6 +1,6 @@
 'use client'
 import StockData from '@/lib/StockData';
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Button, Paper, Typography } from '@mui/material';
 import React, { useEffect } from 'react';
 import TradingViewWidget, { Candlestick, TrendLine } from '@/components/TradingViewWidget_v2';
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
@@ -78,12 +78,13 @@ export default function Home() {
     const [advanceDeclineData, setAdvanceDeclineData] = React.useState<any[]>([]);
     const [conceptList, setConceptList] = React.useState<StockConcept[]>([]);
 
+    const [adStartDate, setAdStartDate] = React.useState(dayjs().subtract(1, 'month').format('YYYY-MM-DD'));
+    const [adEndDate, setAdEndDate] = React.useState(dayjs().format('YYYY-MM-DD'));
+
     useEffect(() => {
         async function fetchAdvanceDecline() {
             try {
-                const end = dayjs().format('YYYY-MM-DD');
-                const start = dayjs().subtract(1, 'month').format('YYYY-MM-DD');
-                const response = await fetch(`/api/pysdk/focus/get_advance_decline_count?start_date=${start}&end_date=${end}`);
+                const response = await fetch(`/api/pysdk/focus/get_advance_decline_count?start_date=${adStartDate}&end_date=${adEndDate}`);
                 if (!response.ok) throw new Error('网络响应错误');
                 const data = await response.json();
                 setAdvanceDeclineData(data);
@@ -92,7 +93,22 @@ export default function Home() {
             }
         }
         fetchAdvanceDecline();
-    }, []);
+    }, [adStartDate, adEndDate]);
+
+    const goToPrevMonth = () => {
+        setAdEndDate(adStartDate);
+        setAdStartDate(dayjs(adStartDate).subtract(1, 'month').format('YYYY-MM-DD'));
+    };
+
+    const goToNextMonth = () => {
+        const nextEnd = adEndDate;
+        const nextStart = dayjs(adStartDate).add(1, 'month').format('YYYY-MM-DD');
+        if (dayjs(nextStart).isAfter(dayjs())) return;
+        setAdStartDate(nextStart);
+        setAdEndDate(dayjs(nextEnd).add(1, 'month').format('YYYY-MM-DD'));
+    };
+
+    const isNextDisabled = dayjs(adStartDate).add(1, 'month').isAfter(dayjs());
 
     useEffect(() => {
 
@@ -347,9 +363,20 @@ export default function Home() {
             {/* 右侧：涨跌家数 + 情绪 */}
             <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', maxWidth: '50%', overflow: 'hidden' }}>
                 <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 0 }} square>
-                    <Typography variant='subtitle2' sx={{ px: 1.5, pt: 1, color: 'text.secondary' }}>
-                        每日涨跌家数
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, pt: 1, gap: 1 }}>
+                        <Typography variant='subtitle2' sx={{ color: 'text.secondary', mr: 'auto' }}>
+                            每日涨跌家数
+                            <Typography variant='caption' sx={{ ml: 1, color: 'text.disabled' }}>
+                                {adStartDate} ~ {adEndDate}
+                            </Typography>
+                        </Typography>
+                        <Button size='small' variant='outlined' onClick={goToPrevMonth}>
+                            上一个月
+                        </Button>
+                        <Button size='small' variant='outlined' onClick={goToNextMonth} disabled={isNextDisabled}>
+                            下一个月
+                        </Button>
+                    </Box>
                     <Box sx={{ flex: 1, minHeight: 0 }}>
                         <ReactECharts
                             style={{ height: '100%', width: '100%' }}
@@ -378,13 +405,15 @@ export default function Home() {
                                         lineStyle: { width: 2, color: riseColor },
                                         itemStyle: { color: riseColor },
                                         areaStyle: { color: 'rgba(236, 58, 55, 0.08)' },
-                                        symbol: 'none',
+                                        symbol: 'circle',
+                                        symbolSize: 6,
+                                        // label: { show: true, fontSize: 10, formatter: '{c}' },
                                         markLine: {
                                             silent: true,
                                             animation: false,
                                             data: [
-                                                { yAxis: 3000, lineStyle: { color: '#999', type: 'dashed' }, label: { formatter: '3000', fontSize: 10 } },
-                                                { yAxis: 1000, lineStyle: { color: '#999', type: 'dashed' }, label: { formatter: '1000', fontSize: 10 } },
+                                                { yAxis: 3500, lineStyle: { color: '#999', type: 'dashed' }},
+                                                { yAxis: 1200, lineStyle: { color: '#999', type: 'dashed' } },
                                             ],
                                         },
                                     },
@@ -396,7 +425,9 @@ export default function Home() {
                                         lineStyle: { width: 2, color: fallColor },
                                         itemStyle: { color: fallColor },
                                         areaStyle: { color: 'rgba(0, 147, 173, 0.08)' },
-                                        symbol: 'none',
+                                        symbol: 'circle',
+                                        symbolSize: 6,
+                                        // label: { show: true, fontSize: 10, formatter: '{c}' },
                                     },
                                 ],
                             }}
@@ -404,7 +435,11 @@ export default function Home() {
                     </Box>
                 </Paper>
                 <Paper sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50%', borderRadius: 0 }} square>
-                    <Typography variant='body2' color='text.secondary'>可能的情绪冰点</Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                        上涨家数大于3500，警惕情绪过热，不开新仓
+                        <br />
+                        上涨家数小于1200，可能情绪低点，适合轻仓低吸博弈，警惕指数破位
+                        </Typography>
                 </Paper>
             </Box>
         </Box>
