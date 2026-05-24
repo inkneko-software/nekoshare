@@ -12,7 +12,7 @@ import BackTracePriceTable from '@/components/BacktracePriceTable/BacktracePrice
 import StockDayPrice from '@/lib/StockDayPrice';
 import THSIndustryDayPrice from '@/lib/THSIndustryDayPrice';
 import PressurePoint from '@/lib/PressurePoint';
-import { isTradingDay, getLatestTradingDay } from'@/lib/chinese-holidays/TradingDays';
+import { isTradingDay, getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
 
 interface Reward {
     afterDay: number
@@ -73,6 +73,8 @@ export default function StrategyExecutionPage() {
     const [pressurePoints, setPressurePoints] = React.useState<PressurePoint[]>([])
     const [selectedTradeDate, setSelectedTradeDate] = React.useState<Dayjs>(dayjs(getLatestTradingDay()));
     const [selectedStrategy, setSelectedStrategy] = React.useState('volume_breakout_execution')
+    const [isShowConcept, setIsShowConcept] = React.useState(true)
+    const [conceptMap, setConceptMap] = React.useState<Record<string, StockConcept[]>>({})
 
     const [selectedId, setSelectedId] = React.useState(-1)
 
@@ -127,7 +129,7 @@ export default function StrategyExecutionPage() {
                             throw new Error('网络响应错误');
                         }
                         let data = (await response.json()).data as StockDayPrice[];
-                        let day = (i: number) => { console.log(data, data.length, i); return i >= data.length ? 0 : data[i].close };
+                        let day = (i: number) => {  return i >= data.length ? 0 : data[i].close };
                         //从day0 到 day5
                         let day0 = day(0);
                         let day1 = day(1);
@@ -148,7 +150,7 @@ export default function StrategyExecutionPage() {
                             throw new Error('网络响应错误');
                         }
                         let data = (await response.json()).data as THSIndustryDayPrice[];
-                        let day = (i: number) => { console.log(data, data.length, i); return i >= data.length ? 0 : data[i].close };
+                        let day = (i: number) => {  return i >= data.length ? 0 : data[i].close };
 
 
                         //从day0 到 day5
@@ -175,6 +177,58 @@ export default function StrategyExecutionPage() {
 
         }
     }
+
+    const recalculateRewards = React.useCallback(async () => {
+        if (results.length === 0) {
+            return
+        }
+        const newResults = results.map(result => ({ ...result, reward: result.reward ? { ...result.reward } : undefined }))
+        for (let i = 0; i < newResults.length; i++) {
+            if (newResults[i].type === 'stock') {
+                let stockCode = newResults[i].code;
+                let response = await fetch(`/api/pysdk/stock/getStockDayPrice?code=${stockCode}&start_date=${selectedTradeDate.format("YYYYMMDD")}&start_delta=5`);
+                if (!response.ok) {
+                    throw new Error('网络响应错误');
+                }
+                let data = (await response.json()).data as StockDayPrice[];
+                let day = (i: number) => i >= data.length ? 0 : data[i].close;
+                let day0 = day(0);
+                let day1 = day(1);
+                let day2 = day(2);
+                let day3 = day(3);
+                let day4 = day(4);
+                let day5 = day(5);
+                let reward: Reward = {
+                    afterDay: data.length > 1 ? (day1 - day0) / day0 * 100 : 0,
+                    threeDay: data.length > 1 ? (Math.max(day1, day2, day3) - day0) / day0 * 100 : 0,
+                    fiveDay: data.length > 1 ? (Math.max(day1, day2, day3, day4, day5) - day0) / day0 * 100 : 0
+                }
+                newResults[i].reward = reward
+            } else {
+                let code = newResults[i].code;
+                let response = await fetch(`/api/pysdk/ths/getIndustryDayPrice?code=${code}&start_date=${selectedTradeDate.format("YYYYMMDD")}&start_delta=5`);
+                if (!response.ok) {
+                    throw new Error('网络响应错误');
+                }
+                let data = (await response.json()).data as THSIndustryDayPrice[];
+                let day = (i: number) => i >= data.length ? 0 : data[i].close;
+                let day0 = day(0);
+                let day1 = day(1);
+                let day2 = day(2);
+                let day3 = day(3);
+                let day4 = day(4);
+                let day5 = day(5);
+                let reward: Reward = {
+                    afterDay: data.length > 1 ? (day1 - day0) / day0 * 100 : 0,
+                    threeDay: data.length > 1 ? (Math.max(day1, day2, day3) - day0) / day0 * 100 : 0,
+                    fiveDay: data.length > 1 ? (Math.max(day1, day2, day3, day4, day5) - day0) / day0 * 100 : 0
+                }
+                newResults[i].reward = reward
+            }
+        }
+        setResults(newResults)
+        localStorage.setItem('v2/strategy-execution::breakout_results:' + selectedTradeDate.format("YYYYMMDD"), JSON.stringify(newResults));
+    }, [results, selectedTradeDate])
 
     const handleSelectChange = (newSelectedId: number) => {
         if (selectedId === newSelectedId) {
@@ -217,7 +271,6 @@ export default function StrategyExecutionPage() {
                 }
                 if (selectedResult.rectangle_recent !== undefined) {
                     let rect = selectedResult.rectangle_recent
-                    console.log(rect, rect.start_date)
                     tmp.push({
                         pointA: { time: rect.start_date, price: rect.low_price },
                         pointB: { time: rect.end_date, price: rect.high_price }
@@ -230,7 +283,6 @@ export default function StrategyExecutionPage() {
                         pointB: { time: rect.end_date, price: rect.high_price }
                     })
                 }
-                console.log(selectedResult.trend_lines)
                 setRectangles(tmp)
                 if (selectedResult.trend_lines !== undefined) {
                     setTrendLines([...selectedResult.trend_lines])
@@ -274,7 +326,6 @@ export default function StrategyExecutionPage() {
                 }
                 if (selectedResult.rectangle_recent !== undefined) {
                     let rect = selectedResult.rectangle_recent
-                    console.log(rect, rect.start_date)
                     tmp.push({
                         pointA: { time: rect.start_date, price: rect.low_price },
                         pointB: { time: rect.end_date, price: rect.high_price }
@@ -287,8 +338,6 @@ export default function StrategyExecutionPage() {
                         pointB: { time: rect.end_date, price: rect.high_price }
                     })
                 }
-                console.log(selectedResult.trend_lines)
-                console.log(results, newSelectedId, selectedResult)
                 setRectangles(tmp)
                 if (selectedResult.trend_lines !== undefined) {
                     setTrendLines([...selectedResult.trend_lines])
@@ -326,7 +375,6 @@ export default function StrategyExecutionPage() {
                     let resp = await fetch(`/api/pysdk/focus/get_stock_concept?stock_code=${selectedResult.code}`)
                     if (resp.ok) {
                         let data = await resp.json()
-                        console.log(data)
                         setConceptList(data)
                     }
 
@@ -335,6 +383,33 @@ export default function StrategyExecutionPage() {
         }
         fetchConceptList()
     }, [selectedId])
+
+    React.useEffect(() => {
+        if (!isShowConcept || isExecuting || results.length === 0) return;
+
+        async function fetchMissingConcepts() {
+            const stockResults = results.filter(r => r.type === 'stock');
+            const missing = stockResults.filter(r => !conceptMap[r.code]);
+            if (missing.length === 0) return;
+
+            const newEntries: Record<string, StockConcept[]> = {};
+            for (const result of missing) {
+                try {
+                    const resp = await fetch(`/api/pysdk/focus/get_stock_concept?stock_code=${result.code}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        newEntries[result.code] = data as StockConcept[];
+                    }
+                } catch (e) {
+                    console.error(`获取概念失败: ${result.code}`, e);
+                }
+            }
+            if (Object.keys(newEntries).length > 0) {
+                setConceptMap(prev => ({ ...prev, ...newEntries }));
+            }
+        }
+        fetchMissingConcepts();
+    }, [isShowConcept, isExecuting, results, conceptMap])
 
     return (
         <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
@@ -349,9 +424,7 @@ export default function StrategyExecutionPage() {
                             label="策略选择"
                             onChange={e => setSelectedStrategy(e.target.value)}
                         >
-                            <MenuItem value='breakout_execution' disabled>板块共振突破</MenuItem>
                             <MenuItem value='volume_breakout_execution' >量能突破</MenuItem>
-                            <MenuItem value='breakout_trend' disabled>下降趋势线突破</MenuItem>
                         </Select>
                     </FormControl>
                     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='zh-cn'>
@@ -366,30 +439,34 @@ export default function StrategyExecutionPage() {
                         />
 
                     </LocalizationProvider>
-                    <Button variant='outlined' onClick={handleExecute} disabled={isExecuting} sx={{ flexGrow: 1, width: '30%' }}>执行</Button>
-                </Box>
-                {/* <Box sx={{ display: 'flex', padding: '8px 8px', marginTop: '8px' }}>
                     <FormControl sx={{ marginRight: '8px', width: '30%' }} >
                         <InputLabel id="strategy-select-label-id">股池选择</InputLabel>
                         <Select
-                            value={selectedStrategy}
+                            value='breakout_execution'
                             size='small'
                             labelId='strategy-select-label-id'
                             label="股池选择"
-                            onChange={e=>setSelectedStrategy(e.target.value)}
+                            disabled
+                            onChange={e => setSelectedStrategy(e.target.value)}
                         >
                             <MenuItem value='breakout_execution'>行业板块</MenuItem>
                             <MenuItem value='breakout_v1_1_execution' >概念板块</MenuItem>
                             <MenuItem value='breakout_trend'>自选</MenuItem>
                         </Select>
                     </FormControl>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '8px 8px', marginTop: '8px' }}>
+                    <Button variant='outlined' onClick={handleExecute} disabled={isExecuting} sx={{ width: '30%', marginRight: '8px' }}>执行策略</Button>
+                    <Button variant='outlined' onClick={recalculateRewards} sx={{ width: '30%', marginRight: '8px' }} disabled={isExecuting || isShowConcept}>计算收益</Button>
                     <FormGroup sx={{ margin: '0px 8px', width: '30%' }}>
-                        <FormControlLabel control={<Switch  />} label={'计算收益'} />
+                        <FormControlLabel control={<Switch checked={isShowConcept} onChange={e => setIsShowConcept(e.target.checked)} />} label={'显示概念'} />
                     </FormGroup>
-                 </Box> */}
+                </Box>
                 <BackTracePriceTable
                     selectedId={selectedId}
                     onSelectedChange={handleSelectChange}
+                    showConcept={isShowConcept}
+                    conceptMap={conceptMap}
                     rows={results.map((result, index) => ({
                         id: index,
                         code: result.code,

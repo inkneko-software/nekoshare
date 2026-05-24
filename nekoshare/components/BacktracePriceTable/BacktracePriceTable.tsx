@@ -64,7 +64,7 @@ const customizedScrollBarStyle = {
 
 
 interface HeadCell {
-    name: '' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日';
+    name: '' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日' | '概念';
     width: string;
     position: 'left' | 'right'
 }
@@ -85,12 +85,21 @@ interface BackTracePriceTableProps {
     selectedId?: number;
     onSelectedChange?: (selectedId: number) => void;
     fullHeight?: boolean;
+    showConcept?: boolean;
+    conceptMap?: Record<string, { concept_name: string; weight: number }[]>;
 }
 
-export default function BackTracePriceTable({ rows, selectedId, onSelectedChange, fullHeight }: BackTracePriceTableProps) {
+export default function BackTracePriceTable({ rows, selectedId, onSelectedChange, fullHeight, showConcept, conceptMap }: BackTracePriceTableProps) {
 
     const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
-    const [orderBy, setOrderBy] = React.useState<'' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日'>('');
+    const [orderBy, setOrderBy] = React.useState<'' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日' | '概念'>('');
+    React.useEffect(() => {
+        if (showConcept && (orderBy === '次日' || orderBy === '三日' || orderBy === '五日')) {
+            setOrderBy('');
+            setOrder('desc');
+        }
+    }, [showConcept, orderBy]);
+
     const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
         if (selectedId === undefined) {
             return;
@@ -106,14 +115,24 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
     // const columnNames = ['', '名称', '涨幅(%)', '次日', '三日', '五日']
     // const columnWidths = ['10%', '30%', '15%', '15%', '15%', '15%']
 
-    const columns: HeadCell[] = [
-        { name: '', width: '10%', position: 'right' },
-        { name: '名称', width: '30%', position: 'left' },
-        { name: '涨幅(%)', width: '15%', position: 'right' },
-        { name: '次日', width: '15%', position: 'right' },
-        { name: '三日', width: '15%', position: 'right' },
-        { name: '五日', width: '15%', position: 'right' },
-    ]
+    const columns: HeadCell[] = React.useMemo(() => {
+        if (showConcept) {
+            return [
+                { name: '', width: '10%', position: 'right' },
+                { name: '名称', width: '30%', position: 'left' },
+                { name: '涨幅(%)', width: '15%', position: 'right' },
+                { name: '概念', width: '45%', position: 'left' },
+            ];
+        }
+        return [
+            { name: '', width: '10%', position: 'right' },
+            { name: '名称', width: '30%', position: 'left' },
+            { name: '涨幅(%)', width: '15%', position: 'right' },
+            { name: '次日', width: '15%', position: 'right' },
+            { name: '三日', width: '15%', position: 'right' },
+            { name: '五日', width: '15%', position: 'right' },
+        ];
+    }, [showConcept]);
 
     const visiableRows = React.useMemo(() => {
         if (orderBy === '' || orderBy === '名称') {
@@ -146,9 +165,9 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
 
     const handleRequestSort = (
         event: React.MouseEvent<unknown>,
-        property: '' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日',
+        property: '' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日' | '概念',
     ) => {
-        if (property === '' || property === '名称') {
+        if (property === '' || property === '名称' || property === '概念') {
             return;
         }
         if (orderBy === property && order === 'asc') {
@@ -184,7 +203,7 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
 
                                     >
                                         {
-                                            column.name !== '' && column.name !== '名称' && (
+                                            column.name !== '' && column.name !== '名称' && column.name !== '概念' && (
                                                 <TableSortLabel
                                                     active={orderBy === column.name}
                                                     direction={orderBy === column.name ? order : 'desc'}
@@ -195,7 +214,7 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
                                             )
                                         }
                                         {
-                                            (column.name === '' || column.name === '名称' ) && column.name
+                                            (column.name === '' || column.name === '名称' || column.name === '概念' ) && column.name
                                         }
 
                                     </TableCell>
@@ -240,26 +259,47 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
                                         {row.change_pct.toFixed(2) + '%'}
                                     </TableCell>
 
-                                    <TableCell align="right" sx={{
-                                        width: columns[3].width,
-                                        color: (row.afterDay > 0 ? '#ff3535' : row.afterDay === 0 ? 'unset' : '#20cf17'),
-                                        borderLeft: '1px rgba(81, 81, 81, 1) solid',
-                                    }}>
-                                        {row.afterDay.toFixed(2) + '%'}
-                                    </TableCell>
+                                    {showConcept ? (
+                                        <TableCell align="left" sx={{
+                                            width: columns[3].width,
+                                            borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                        }}>
+                                            <Typography variant="body2" noWrap title={conceptMap?.[row.code]
+                                                ?.sort((a, b) => b.weight - a.weight)
+                                                .slice(0, 3)
+                                                .map(c => c.concept_name)
+                                                .join(' + ') || '—'}>
+                                                {conceptMap?.[row.code]
+                                                    ?.sort((a, b) => b.weight - a.weight)
+                                                    .slice(0, 3)
+                                                    .map(c => c.concept_name)
+                                                    .join(' + ') || '—'}
+                                            </Typography>
+                                        </TableCell>
+                                    ) : (
+                                        <>
+                                            <TableCell align="right" sx={{
+                                                width: columns[3].width,
+                                                color: (row.afterDay > 0 ? '#ff3535' : row.afterDay === 0 ? 'unset' : '#20cf17'),
+                                                borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                            }}>
+                                                {row.afterDay.toFixed(2) + '%'}
+                                            </TableCell>
 
-                                    <TableCell align="right" sx={{
-                                        width: columns[4].width,
-                                        color: (row.threeDay > 0 ? '#ff3535' : row.threeDay === 0 ? 'unset' : '#20cf17'),
-                                        borderLeft: '1px rgba(81, 81, 81, 1) solid',
-                                    }}>{row.threeDay.toFixed(2) + '%'}</TableCell>
+                                            <TableCell align="right" sx={{
+                                                width: columns[4].width,
+                                                color: (row.threeDay > 0 ? '#ff3535' : row.threeDay === 0 ? 'unset' : '#20cf17'),
+                                                borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                            }}>{row.threeDay.toFixed(2) + '%'}</TableCell>
 
 
-                                    <TableCell align="right" sx={{
-                                        width: columns[5].width,
-                                        color: (row.fiveDay > 0 ? '#ff3535' : row.fiveDay === 0 ? 'unset' : '#20cf17'),
-                                        borderLeft: '1px rgba(81, 81, 81, 1) solid',
-                                    }}>{row.fiveDay.toFixed(2) + '%'}</TableCell>
+                                            <TableCell align="right" sx={{
+                                                width: columns[5].width,
+                                                color: (row.fiveDay > 0 ? '#ff3535' : row.fiveDay === 0 ? 'unset' : '#20cf17'),
+                                                borderLeft: '1px rgba(81, 81, 81, 1) solid',
+                                            }}>{row.fiveDay.toFixed(2) + '%'}</TableCell>
+                                        </>
+                                    )}
 
                                 </TableRow>
                             );
