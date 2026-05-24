@@ -233,7 +233,7 @@ def get_advance_decline_count(start_date: str, end_date: str) -> pd.DataFrame:
     :param end_date: 结束日期，格式YYYY-MM-DD
     :return: 包含trade_date, advance_count, decline_count, flat_count的DataFrame
     """
-
+    today = datetime.now()
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
     if end - start > timedelta(days=31):
@@ -286,7 +286,7 @@ def get_advance_decline_count(start_date: str, end_date: str) -> pd.DataFrame:
                 continue
 
             # 当前交易日数据仍在更新，缓存15分钟；其余缓存24小时
-            ttl = 900 if d_date == trade_day.get_latest_trading_day() else 86400
+            ttl = 900 if d_date == trade_day.get_latest_trading_day() and d_date == today.date() and today.hour < 16 else 86400
             r.setex(f"advance_decline:{d}", ttl, json.dumps(counts))
 
     result_df = pd.DataFrame([
