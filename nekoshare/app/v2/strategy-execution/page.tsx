@@ -400,14 +400,14 @@ export default function StrategyExecutionPage() {
                         fiveDay: result.reward?.fiveDay ?? 0
                     }))} />
             </Paper>
-            <Paper sx={{ width: '60%', borderLeft: '1px #505a5e solid', display: 'flex', flexDirection: 'column' }} square>
-                <Box sx={{ height: '70%' }}>
+            <Paper sx={{ width: '60%', height: '100%', borderLeft: '1px #505a5e solid', display: 'flex', flexDirection: 'column' }} square>
+                <Box sx={{ height: '70%', maxHeight: '70%', overflow: 'hidden' }}>
                     <TradingViewWidget candlesticks={candlesticks} rectangles={rectangles} trendLines={trendLines.map(trendLine => ({
                         startPoint: { time: trendLine.start_date, price: trendLine.low_price },
                         endPoint: { time: trendLine.end_date, price: trendLine.high_price }
                     }))} pressurePoints={pressurePoints} highlightDate={(isTradingDay(selectedTradeDate) ? selectedTradeDate : getLatestTradingDay(selectedTradeDate)).format("YYYY-MM-DD")} />
                 </Box>
-                <Box sx={{ display: 'flex', height: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
+                <Box sx={{ display: 'flex', height: '30%', maxHeight: '30%', flexDirection: "column", borderTop: '1px #505a5e solid', overflow: 'auto', overflowX: 'hidden' }}>
                     {conceptList.map((concept) => (
                         <Box key={concept.id} sx={{ padding: '8px', borderBottom: '1px #505a5e solid', display: 'flex', flexDirection: 'column' }}>
                             <Typography variant='subtitle1'>{concept.concept_name} ({concept.concept_code}) 权重: {concept.weight.toFixed(2)}</Typography>
