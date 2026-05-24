@@ -1,7 +1,7 @@
 'use client'
 import StockData from '@/lib/StockData';
 import StockDayPrice from '@/lib/StockDayPrice';
-import { Box, Container, Typography } from '@mui/material';
+import { Box, Container, IconButton, SvgIcon, Typography } from '@mui/material';
 import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode, CrosshairMode, LineStyle, ChartOptions, ChartOptionsBase, LayoutOptions, DeepPartial, LineWidth, IChartApi, ISeriesApi, LineSeries, SeriesMarker } from 'lightweight-charts';
 import React, { useEffect, useRef, memo, useState } from 'react';
 import { PreOpenQualitiedResult } from '@/app/api/quantitative/getPreOpenQualified/route';
@@ -309,9 +309,17 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
             {
                 chartApi !== null && seriesApi !== null && <DrawingTool chart={chartApi} series={seriesApi} />
             }
-            <Box id='drawing-tool' sx={{ display: 'none' }} />
+            {
+                (chartApi === null || seriesApi === null) && (
+                    <IconButton sx={{ borderBottom: '1px white solid', visibility: 'hidden' }} >
+                        <SvgIcon>
+                            <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="13599" width="24" height="24"><path d="M870.4 204.8a51.2 51.2 0 0 1 51.2 51.2v512a51.2 51.2 0 0 1-51.2 51.2H153.6a51.2 51.2 0 0 1-51.2-51.2V256a51.2 51.2 0 0 1 51.2-51.2h716.8z m-25.6 76.8h-665.6v460.8h665.6v-460.8z" fill='#000000' p-id="13600"></path><path d="M153.6 153.6a102.4 102.4 0 1 1 0 204.8 102.4 102.4 0 0 1 0-204.8z m0 51.2a51.2 51.2 0 1 0 0 102.4 51.2 51.2 0 0 0 0-102.4z" fill='#000000' p-id="13601"></path><path d="M153.6 204.8a51.2 51.2 0 1 0 0 102.4 51.2 51.2 0 0 0 0-102.4z" fill='#000000' p-id="13602"></path><path d="M870.4 665.6a102.4 102.4 0 1 1 0 204.8 102.4 102.4 0 0 1 0-204.8z m0 51.2a51.2 51.2 0 1 0 0 102.4 51.2 51.2 0 0 0 0-102.4z" fill='#000000' p-id="13603"></path><path d="M870.4 716.8a51.2 51.2 0 1 0 0 102.4 51.2 51.2 0 0 0 0-102.4z" fill='#000000' p-id="13604"></path></svg>
+                        </SvgIcon>
+                    </IconButton>
+                )
+            }
             <Typography ref={tooltipRef} variant='caption' sx={{ display: 'none', margin: '8px 8px', position: 'absolute', right: 0, top: 0, zIndex: 100000 }} />
-            <Box ref={containerRef} sx={{ flexGrow: 1, width: '100%' }} >
+            <Box ref={containerRef} sx={{ flexGrow: 1, width: '100%', height: '' }} >
             </Box>
         </Box>
 
