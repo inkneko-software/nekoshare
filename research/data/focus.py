@@ -277,9 +277,17 @@ def get_advance_decline_count(start_date: str, end_date: str) -> pd.DataFrame:
                 day_data[d]['flat'] += 1
 
         for d in uncached_dates:
+            d_date = datetime.strptime(d, "%Y-%m-%d").date()
             counts = day_data.get(d, {'advance': 0, 'decline': 0, 'flat': 0})
-            r.setex(f"advance_decline:{d}", 86400, json.dumps(counts))
             results[d] = counts
+
+            # 未来日期不缓存
+            if d_date > trade_day.get_latest_trading_day():
+                continue
+
+            # 当前交易日数据仍在更新，缓存15分钟；其余缓存24小时
+            ttl = 900 if d_date == trade_day.get_latest_trading_day() else 86400
+            r.setex(f"advance_decline:{d}", ttl, json.dumps(counts))
 
     result_df = pd.DataFrame([
         {'trade_date': d, 'advance_count': results[d]['advance'],
