@@ -93,13 +93,6 @@ export default function BackTracePriceTable({ rows, selectedId, onSelectedChange
 
     const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
     const [orderBy, setOrderBy] = React.useState<'' | '名称' | '涨幅(%)' | '次日' | '三日' | '五日' | '概念'>('');
-    React.useEffect(() => {
-        if (showConcept && (orderBy === '次日' || orderBy === '三日' || orderBy === '五日')) {
-            setOrderBy('');
-            setOrder('desc');
-        }
-    }, [showConcept, orderBy]);
-
     const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
         if (selectedId === undefined) {
             return;
