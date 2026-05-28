@@ -259,6 +259,13 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, dayPrice.length - suitableNum), to: dayPrice.length - 1 });
 
+            if (highlightDate !== undefined ){
+                let index = dayPrice.findIndex(p => p.time === highlightDate);
+                if (index !== -1){
+                    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, index - suitableNum), to: index });
+                }
+            }
+
             containerRef.current.onresize = () => {
                 chart.applyOptions({ width: containerRef.current!.clientWidth, height: containerRef.current!.clientHeight });
             }
@@ -300,9 +307,10 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             };
         },
-        [containerRef.current, candlesticks, trendLines]
+        [containerRef.current, candlesticks, trendLines, highlightDate]
 
     );
+
 
     return (
         <Box sx={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
