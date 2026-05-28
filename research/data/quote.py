@@ -222,7 +222,7 @@ def get_stock_day_price_df(
 
     df_k = pd.read_sql(sql + date_sql, engine, params=param)
     if len(df_k) == 0:
-        return []
+        return df_k
 
     if fq == "qfq":
         sql = """
