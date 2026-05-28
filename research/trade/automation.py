@@ -79,7 +79,7 @@ def tradeNextDay(trade_date: str) -> list[TradeHistory]:
     selected_stocks = get_breakout_stocks(trade_date.strftime("%Y%m%d"))
     for result in selected_stocks:
         prices = get_stock_day_price(result.code, minus_5_days, end_date)
-        if len(prices) < 6:
+        if len(prices) < 7:
             continue
         buy_price = 0
 
