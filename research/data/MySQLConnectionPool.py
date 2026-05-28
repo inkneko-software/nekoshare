@@ -9,6 +9,7 @@ from utils.log import LoggerFactory
 log = LoggerFactory.get_logger(__name__)
 
 mysql_host = os.environ.get("DB_HOST")
+mysql_port = os.environ.get("DB_PORT")
 mysql_user = os.environ.get("DB_USER")
 mysql_passwd = os.environ.get("DB_PASSWORD")
 
@@ -31,6 +32,7 @@ class MySQLConnectionPool:
             pool_size = int(os.environ.get("DB_POOL_SIZE", 20))
             self.pool = pooling.MySQLConnectionPool(
                 host=mysql_host,
+                port=mysql_port,
                 user=mysql_user,
                 password=mysql_passwd,
                 database="nekoshare",

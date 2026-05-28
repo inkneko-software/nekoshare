@@ -31,11 +31,12 @@ log = LoggerFactory.get_logger(__name__)
 # )
 
 mysql_host = os.environ.get("DB_HOST")
+mysql_port = os.environ.get("DB_PORT")
 mysql_user = os.environ.get("DB_USER")
 mysql_passwd = os.environ.get("DB_PASSWORD")
 
 engine = create_engine(
-    f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}/nekoshare",
+    f"mysql+pymysql://{mysql_user}:{mysql_passwd}@{mysql_host}:{mysql_port}/nekoshare",
     pool_pre_ping=True,
     pool_recycle=3600
 )
