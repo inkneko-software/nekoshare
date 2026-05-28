@@ -1,5 +1,5 @@
 'use client';
-import { Box, Tabs, Tab, Paper } from '@mui/material';
+import { Box, Tabs, Tab, Paper, Button } from '@mui/material';
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
@@ -18,6 +18,7 @@ function FocusLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
     const router = useRouter();
     const pathName = usePathname();
     const [selectedTradeDate, setSelectedTradeDate] = useState(getLatestTradingDay().isSame(dayjs(), 'day') && (new Date()).getHours() < 16 ? getPrevTradingDay(getLatestTradingDay()) : getLatestTradingDay());
+    const [copyTableData, setCopyTableData] = useState<(() => void) | undefined>();
     const handleChange = (event: React.SyntheticEvent, href: string) => {
         router.push(href);
     };
@@ -26,23 +27,28 @@ function FocusLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
     return (
         <Paper sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }} square>
             <Box sx={{ display: 'flex', borderBottom: '1px solid #e0e0e0' }}>
-                <Tabs value={pathName} onChange={handleChange} aria-label="focus tabs" sx={{ margin: 'auto 0px' }}>
+                <Tabs value={pathName} onChange={handleChange} aria-label="focus tabs" sx={{ margin: 'auto auto auto 0px' }}>
                     {routes.map(route => (
                         <Tab key={route.value} label={route.label} value={route.href} />
                     ))}
                 </Tabs>
                 <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='zh-cn'>
+                    {copyTableData && (
+                        <Button size="small" variant="outlined" onClick={copyTableData} sx={{  mr: 1, my: 'auto', whiteSpace: 'nowrap' }}>
+                            导出至剪切板
+                        </Button>
+                    )}
                     <DatePicker
                         format='YYYY-MM-DD'
                         value={dayjs(selectedTradeDate)}
                         onChange={val => val && setSelectedTradeDate(val)}
                         slotProps={{ textField: { size: 'small' } }}
-                        sx={{ margin: 'auto 8px auto auto' }}
+                        sx={{ margin: 'auto 8px auto 0px' }}
                         shouldDisableDate={(date) => !isTradingDay(date) || date.isAfter(getLatestTradingDay())}
                     />
                 </LocalizationProvider>
             </Box>
-            <FocusContext.Provider value={{ selectedTradeDate }}>
+            <FocusContext.Provider value={{ selectedTradeDate, copyTableData, setCopyTableData }}>
                 {children}
             </FocusContext.Provider>
         </Paper>
