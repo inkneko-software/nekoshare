@@ -10,6 +10,7 @@ from entity.THSIndustryDayPrice import THSIndustryDayPrice
 from entity.THSIndustryStock import THSIndustryStock
 from entity.StockData import StockData
 from entity.THSIndustryMarket import THSIndustryMarket
+from entity.MarketIndexDayPrice import MarketIndexDayPrice
 from entity.StockDayPrice import StockDayPrice
 from group_breakout import trade_day
 from sqlalchemy import create_engine
@@ -353,3 +354,45 @@ def get_stock_day_price(
         )
         for row in df_k.itertuples()
     ]
+
+def get_market_index_day_price(code: str = "USHI1A0001", start_date: str = None, end_date: str = None) -> list[MarketIndexDayPrice]:
+    pool = MySQLConnectionPool()
+    sql = """
+    SELECT code, name, trade_date, open, close, high, low, volume, amount
+    FROM market_index_day_price
+    WHERE code = %s
+    """
+
+    param = None
+    date_sql = ""
+    if start_date != None and end_date != None:
+        date_sql = " AND trade_date BETWEEN %s AND %s"
+        param = (code, start_date, end_date)
+    elif start_date != None:
+        date_sql = " AND trade_date >= %s"
+        param = (code, start_date)
+    elif end_date != None:
+        date_sql = " AND trade_date <= %s"
+        param = (code, end_date)
+    else:
+        param = (code,)
+        
+    sql += date_sql
+    
+    results = pool.query(sql, param)
+    day_prices = [
+        MarketIndexDayPrice(
+            row[0],
+            row[1],
+            row[2],
+            row[3],
+            row[4],
+            row[5],
+            row[6],
+            row[7],
+            row[8],
+
+        )
+        for row in results
+    ]
+    return day_prices

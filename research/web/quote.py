@@ -16,11 +16,13 @@ from model import *
 from group_breakout.strategies.trend import get_rise_trend_line, get_down_trend_line
 from group_breakout.strategies import trend
 import os
+
 # class Input(BaseModel):
 #     a: float
 #     b: float
 
 from utils.log import LoggerFactory
+
 log = LoggerFactory.get_logger(__name__)
 
 base_url = "/api/pysdk"
@@ -28,21 +30,29 @@ base_url = "/api/pysdk"
 from fastapi import APIRouter
 
 router = APIRouter()
+
+
 @router.get(base_url + "/stock/getStockInfo")
 def get_stock_info(code: str):
     """
     获取指定股票的股票信息
 
     :param code: 股票代码
-    :return: 
+    :return:
     """
     stock = quote.get_stock_data(code)
     if stock == None:
         return JSONResponse(status_code=404, content={"message": "代码不存在"})
     return {"data": stock}
 
+
 @router.get(base_url + "/stock/getStockDayPrice")
-def add(code: str, start_date: str = "20140101", end_date: str = None, start_delta: int = None):
+def add(
+    code: str,
+    start_date: str = "20140101",
+    end_date: str = None,
+    start_delta: int = None,
+):
     """
     获取指定股票的日线价格数据
 
@@ -62,8 +72,14 @@ def add(code: str, start_date: str = "20140101", end_date: str = None, start_del
     prices = quote.get_stock_day_price(code, start_date, end_date)
     return {"data": prices}
 
+
 @router.get(base_url + "/ths/getIndustryDayPrice")
-def get_industry_day_price(code: str, start_date: str = "20140101", end_date: str = "20990101", start_delta: int = None):
+def get_industry_day_price(
+    code: str,
+    start_date: str = "20140101",
+    end_date: str = "20990101",
+    start_delta: int = None,
+):
     """
     获取指定行业日线价格数据
 
@@ -71,7 +87,7 @@ def get_industry_day_price(code: str, start_date: str = "20140101", end_date: st
     :param start_date: 起始日期，格式为 'YYYY-MM-DD'
     :param end_date: 结束日期，格式为 'YYYY-MM-DD'，若start_delta不为None，则本参数将被忽略
     :param start_delta: 起始时间偏移量，默认为 None，表示不偏移。通过本参数可以获取从start_date开始，以及后start_delta个交易日的数据
-    :return: 
+    :return:
     """
     start_date = datetime.strptime(start_date, "%Y%m%d").date()
     if start_delta != None and start_delta > 0:
@@ -80,6 +96,7 @@ def get_industry_day_price(code: str, start_date: str = "20140101", end_date: st
             end_date = trade_day.get_next_trading_day(end_date)
     prices = quote.get_ths_industry_day_price(code, start_date, end_date)
     return {"data": prices}
+
 
 @router.get(base_url + "/ths/getIndustry")
 def fetch_industry_market(code: str):
@@ -91,3 +108,18 @@ def fetch_industry_market(code: str):
         return JSONResponse(status_code=404, content={"message": "行业不存在"})
     return {"data": thsIndustryDayPrice[0]}
 
+
+@router.get(base_url + "/market_index/quote")
+def fetch_industry_market(
+    code: str = "USHI1A0001", start: str = None, end: str = None
+):
+    """
+    获取指定指数代码的日线数据
+
+    :param code: 指数代码，如上证指数 "USHI1A0001"，同花顺全A(沪深) "URFI883421"
+    :param start: 起始日期
+    :param end: 结束日期
+
+    """
+    thsIndustryDayPrice = quote.get_market_index_day_price(code, start, end)
+    return thsIndustryDayPrice

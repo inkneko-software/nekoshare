@@ -9,6 +9,7 @@ from .LhbStockDetail import LhbStockDetail
 from .LhbStockList import LhbStockList
 from .LimitUpReason import LimitUpReason
 from .StockConcept import StockConcept
+from .MarketIndexDayPrice import MarketIndexDayPrice
 __all__ = [
     "StockData",
     "StockDayPrice",
@@ -20,5 +21,6 @@ __all__ = [
     "LhbStockDetail",
     "LhbStockList",
     "LimitUpReason",
-    "StockConcept"
+    "StockConcept",
+    "MarketIndexDayPrice"
 ]
