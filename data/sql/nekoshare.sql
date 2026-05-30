@@ -177,3 +177,18 @@ CREATE TABLE stock_concept(
     INDEX(concept_code),
     UNIQUE(stock_code, concept_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE market_index_day_price(
+    `code` VARCHAR(20) NOT NULL COMMENT '指数代码，如上证指数 USHI1A0001, 同花顺全A URFI883421',
+    `name` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '股票的名称，如上证指数',
+    `trade_date` DATE NOT NULL COMMENT '交易日期',
+    `open` DECIMAL(10, 2) NOT NULL COMMENT '开盘价',
+    `close` DECIMAL(10, 2) NOT NULL COMMENT '收盘价',
+    `high` DECIMAL(10, 2) NOT NULL COMMENT '最高价',
+    `low` DECIMAL(10, 2) NOT NULL  COMMENT '最低价',
+    `volume` bigint NOT NULL DEFAULT 0 COMMENT '成交量，单位为股',
+    `amount` DECIMAL(20, 2) NOT NULL DEFAULT 0 COMMENT '成交额，单位为元',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+    PRIMARY KEY(code, trade_date) COMMENT '',
+    INDEX idx_trade_date (trade_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
