@@ -149,3 +149,16 @@ def get_advance_decline_count(start_date: str, end_date: str):
     """
     df = focus.get_advance_decline_count(start_date, end_date)
     return json.loads(df.to_json(orient='records'))
+
+@router.get(base_url + "/focus/market_analyze")
+def get_advance_decline_count(code: str = None, date: str = None):
+    """
+    获取指定时间范围内每日的涨跌家数
+
+    :param start_date: 开始日期 YYYY-MM-DD
+    :param end_date: 结束日期 YYYY-MM-DD
+    :return: 每日涨跌家数列表
+    """
+
+    ret = focus.market_analyze(code, date)
+    return ret

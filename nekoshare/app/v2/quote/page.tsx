@@ -9,6 +9,7 @@ import { GetIndustryStocksResponse } from '@/app/api/ths/getIndustryStocks/route
 import dayjs from 'dayjs';
 import ReactECharts from 'echarts-for-react';
 import MarketIndexDayPrice from '@/lib/MarketIndexDayPrice';
+import MarketAnalyze from '@/lib/MarketAnalyze';
 
 interface StockConcept {
     id: number;
@@ -87,6 +88,8 @@ export default function Home() {
     const [selectedIndicator, setSelectedIndicator] = React.useState<'USHI1A0001' | 'URFI883421' | 'rise_amount'>('USHI1A0001');
     const [USHI1A0001Candlesticks, setUSHI1A0001Candlesticks] = React.useState<Candlestick[]>([])
     const [URFI883421Candlesticks, setURFI883421Candlesticks] = React.useState<Candlestick[]>([])
+
+    const [marketAnalyze, setMarketAnalyze] = React.useState<MarketAnalyze>()
 
     useEffect(() => {
         async function fetchAdvanceDecline() {
@@ -176,8 +179,22 @@ export default function Home() {
             }
         }
 
+        async function fetchMarketAnalyze() {
+            try {
+                let response = await fetch('/api/pysdk/focus/market_analyze?code=URFI883421');
+                if (!response.ok) {
+                    throw new Error('网络响应错误');
+                }
+                let data = await response.json() as MarketAnalyze;
+                setMarketAnalyze(data)
+            } catch (error) {
+                console.error('获取数据失败:', error);
+            }
+        }
+
         fetchIndustries();
         fetchMarketIndex();
+        fetchMarketAnalyze()
     }, []);
 
     useEffect(() => {
@@ -499,27 +516,45 @@ export default function Home() {
                         <Button sx={{ ml: 1 }} variant={selectedIndicator === 'rise_amount' ? 'outlined' : 'text'} size='small' onClick={() => setSelectedIndicator('rise_amount')} >涨跌家数</Button>
                     </Paper>
                     <Box display='flex' flexDirection='column' sx={{ m: 1 }}>
-                        <Typography variant='body1' color='text' sx={{ my: 1 }}>
-                            指数分析：
-                        </Typography>
+                        {
+                            marketAnalyze &&
+                            <>
+                                <Typography variant='body1' color='text' sx={{ my: 1 }}>
+                                    指数分析 ({marketAnalyze.trade_date})：
+                                </Typography>
 
-                        <Typography variant='body2' color='text.secondary'>
-                            当前上证指数的5日线位于10日线之下，为震荡区间/下降趋势
-                            <br />
-                            指数位于5日线与10日线之下，应当空仓
-                        </Typography>
-                        <Typography variant='body1' color='text' sx={{ my: 1 }}>
-                            情绪分析：
-                        </Typography>
-                        <Typography variant='body2' color='text.secondary'>
-                            当前上涨家数1300家，暂无明显倾向
-                        </Typography>
-                        <Divider sx={{ my: 1 }} />
+                                <Typography variant='body2' color='text.secondary'>
+                                    {marketAnalyze.ma_trend}
+                                    <br />
+                                    {marketAnalyze.price_trend}
+                                </Typography>
+                            </>
+                        }
+                        {
+                            advanceDeclineData.length !== 0 &&
+                            <>
+                                <Typography variant='body1' color='text' sx={{ my: 1 }}>
+                                    情绪分析 ({advanceDeclineData[advanceDeclineData.length - 1].trade_date})：
+                                </Typography>
+                                <Typography variant='body2' color='text.secondary'>
+                                    {
+                                        (()=>{
+                                            let amount = advanceDeclineData[advanceDeclineData.length - 1].advance_count;
+                                   
+                                            return  `当前上涨家数${amount}家，${amount > 3500 ? '警惕情绪过热' : amount < 1200 ?  '可能情绪低点，适合轻仓低吸博弈，警惕指数破位' : '暂无明显倾向'}`
+                                        })()
+                                    }
+                                </Typography>
+                                <Divider sx={{ my: 1 }} />
+
+                            </>
+                        }
+
                         <Typography variant='body1' color='text.secondary' sx={{ my: 1 }}>
                             说明：
                         </Typography>
                         <Typography variant='body2' color='text.secondary'>
-                            当5日线位于10日线之上，且指数位于5日线之上时，为上升趋势
+                            当5日线位于10日线之上，且指数位于5日线之上时，为上升趋势(也可能是震荡区间里的)
                             <br />
                             若指数首次跌破5日线，则应减仓注意风险，跌破10日线则应该清仓。
                             <br />
