@@ -1,6 +1,6 @@
 'use client'
 import StockData from '@/lib/StockData';
-import { Box, Button, Paper, Typography } from '@mui/material';
+import { Box, Button, Divider, Paper, Typography } from '@mui/material';
 import React, { useEffect } from 'react';
 import TradingViewWidget, { Candlestick, TrendLine } from '@/components/TradingViewWidget_v2';
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
@@ -8,6 +8,7 @@ import { THSIndustryMarket, GetIndustriesResponse } from '@/app/api/ths/getIndus
 import { GetIndustryStocksResponse } from '@/app/api/ths/getIndustryStocks/route';
 import dayjs from 'dayjs';
 import ReactECharts from 'echarts-for-react';
+import MarketIndexDayPrice from '@/lib/MarketIndexDayPrice';
 
 interface StockConcept {
     id: number;
@@ -18,6 +19,8 @@ interface StockConcept {
     explain: string;
     weight: number;
 }
+
+
 
 const customizedHiddenScrollBarStyle = {
     '::-webkit-scrollbar': {
@@ -81,6 +84,10 @@ export default function Home() {
     const [adStartDate, setAdStartDate] = React.useState(dayjs().subtract(1, 'month').format('YYYY-MM-DD'));
     const [adEndDate, setAdEndDate] = React.useState(dayjs().format('YYYY-MM-DD'));
 
+    const [selectedIndicator, setSelectedIndicator] = React.useState<'USHI1A0001' | 'URFI883421' | 'rise_amount'>('USHI1A0001');
+    const [USHI1A0001Candlesticks, setUSHI1A0001Candlesticks] = React.useState<Candlestick[]>([])
+    const [URFI883421Candlesticks, setURFI883421Candlesticks] = React.useState<Candlestick[]>([])
+
     useEffect(() => {
         async function fetchAdvanceDecline() {
             try {
@@ -134,7 +141,43 @@ export default function Home() {
             }
         }
 
+        async function fetchMarketIndex() {
+            try {
+                let response = await fetch('/api/pysdk/market_index/quote?code=USHI1A0001');
+                if (!response.ok) {
+                    throw new Error('网络响应错误');
+                }
+                let data = await response.json() as MarketIndexDayPrice[];
+                setUSHI1A0001Candlesticks(data.map(d => ({
+                    time: d.trade_date,
+                    open: d.open,
+                    high: d.high,
+                    low: d.low,
+                    close: d.close,
+                    volume: d.volume,
+                })))
+
+                response = await fetch('/api/pysdk/market_index/quote?code=URFI883421');
+                if (!response.ok) {
+                    throw new Error('网络响应错误');
+                }
+                data = await response.json() as MarketIndexDayPrice[];
+                setURFI883421Candlesticks(data.map(d => ({
+                    time: d.trade_date,
+                    open: d.open,
+                    high: d.high,
+                    low: d.low,
+                    close: d.close,
+                    volume: d.volume,
+                })))
+
+            } catch (error) {
+                console.error('获取数据失败:', error);
+            }
+        }
+
         fetchIndustries();
+        fetchMarketIndex();
     }, []);
 
     useEffect(() => {
@@ -362,84 +405,137 @@ export default function Home() {
 
             {/* 右侧：涨跌家数 + 情绪 */}
             <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', maxWidth: '50%', overflow: 'hidden' }}>
-                <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 0 }} square>
-                    <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, pt: 1, gap: 1 }}>
-                        <Typography variant='subtitle2' sx={{ color: 'text.secondary', mr: 'auto' }}>
-                            每日涨跌家数
-                            <Typography variant='caption' sx={{ ml: 1, color: 'text.disabled' }}>
-                                {adStartDate} ~ {adEndDate}
-                            </Typography>
-                        </Typography>
-                        <Button size='small' variant='outlined' onClick={goToPrevMonth}>
-                            上一个月
-                        </Button>
-                        <Button size='small' variant='outlined' onClick={goToNextMonth} disabled={isNextDisabled}>
-                            下一个月
-                        </Button>
-                    </Box>
-                    <Box sx={{ flex: 1, minHeight: 0 }}>
-                        <ReactECharts
-                            style={{ height: '100%', width: '100%' }}
-                            option={{
-                                tooltip: { trigger: 'axis' },
-                                legend: { data: ['上涨', '下跌'], top: 2, right: 10, textStyle: { fontSize: 11 }, selected: { '上涨': true, '下跌': false } },
-                                grid: { left: 36, right: 8, top: 28, bottom: 18 },
-                                xAxis: {
-                                    type: 'category',
-                                    data: advanceDeclineData.map((d: any) => d.trade_date.slice(5)),
-                                    axisLabel: { fontSize: 10, interval: 3 },
-                                    axisLine: { lineStyle: { color: '#e0e0e0' } },
-                                    splitLine: { show: false },
-                                },
-                                yAxis: {
-                                    type: 'value',
-                                    axisLabel: { fontSize: 10 },
-                                    splitLine: { show: false },
-                                },
-                                series: [
-                                    {
-                                        name: '上涨',
-                                        type: 'line',
-                                        data: advanceDeclineData.map((d: any) => d.advance_count),
-                                        smooth: true,
-                                        lineStyle: { width: 2, color: riseColor },
-                                        itemStyle: { color: riseColor },
-                                        areaStyle: { color: 'rgba(236, 58, 55, 0.08)' },
-                                        symbol: 'circle',
-                                        symbolSize: 6,
-                                        // label: { show: true, fontSize: 10, formatter: '{c}' },
-                                        markLine: {
-                                            silent: true,
-                                            animation: false,
-                                            data: [
-                                                { yAxis: 3500, lineStyle: { color: '#999', type: 'dashed' }},
-                                                { yAxis: 1200, lineStyle: { color: '#999', type: 'dashed' } },
-                                            ],
+                <Paper sx={{ height: '50%', minHeight: 0 }} square>
+
+
+                    {
+                        selectedIndicator === 'USHI1A0001' && <TradingViewWidget candlesticks={USHI1A0001Candlesticks} rectangles={[]} trendLines={[]} enableMAHighlight />
+
+                    }
+                    {
+                        selectedIndicator === 'URFI883421' && <TradingViewWidget candlesticks={URFI883421Candlesticks} rectangles={[]} trendLines={[]} enableMAHighlight />
+
+                    }
+                    {
+                        selectedIndicator === 'rise_amount' &&
+                        <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 0, height: '100%' }} square>
+                            <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, pt: 1, gap: 1 }}>
+                                <Typography variant='subtitle2' sx={{ color: 'text.secondary', mr: 'auto' }}>
+                                    每日涨跌家数
+                                    <Typography variant='caption' sx={{ ml: 1, color: 'text.disabled' }}>
+                                        {adStartDate} ~ {adEndDate}
+                                    </Typography>
+                                </Typography>
+                                <Button size='small' variant='outlined' onClick={goToPrevMonth}>
+                                    上一个月
+                                </Button>
+                                <Button size='small' variant='outlined' onClick={goToNextMonth} disabled={isNextDisabled}>
+                                    下一个月
+                                </Button>
+                            </Box>
+                            <Box sx={{ flex: 1, minHeight: 0 }}>
+                                <ReactECharts
+                                    style={{ height: '100%', width: '100%' }}
+                                    option={{
+                                        tooltip: { trigger: 'axis' },
+                                        legend: { data: ['上涨', '下跌'], top: 2, right: 10, textStyle: { fontSize: 11 }, selected: { '上涨': true, '下跌': false } },
+                                        grid: { left: 36, right: 8, top: 28, bottom: 18 },
+                                        xAxis: {
+                                            type: 'category',
+                                            data: advanceDeclineData.map((d: any) => d.trade_date.slice(5)),
+                                            axisLabel: { fontSize: 10, interval: 3 },
+                                            axisLine: { lineStyle: { color: '#e0e0e0' } },
+                                            splitLine: { show: false },
                                         },
-                                    },
-                                    {
-                                        name: '下跌',
-                                        type: 'line',
-                                        data: advanceDeclineData.map((d: any) => d.decline_count),
-                                        smooth: true,
-                                        lineStyle: { width: 2, color: fallColor },
-                                        itemStyle: { color: fallColor },
-                                        areaStyle: { color: 'rgba(0, 147, 173, 0.08)' },
-                                        symbol: 'circle',
-                                        symbolSize: 6,
-                                        // label: { show: true, fontSize: 10, formatter: '{c}' },
-                                    },
-                                ],
-                            }}
-                        />
-                    </Box>
+                                        yAxis: {
+                                            type: 'value',
+                                            axisLabel: { fontSize: 10 },
+                                            splitLine: { show: false },
+                                        },
+                                        series: [
+                                            {
+                                                name: '上涨',
+                                                type: 'line',
+                                                data: advanceDeclineData.map((d: any) => d.advance_count),
+                                                smooth: true,
+                                                lineStyle: { width: 2, color: riseColor },
+                                                itemStyle: { color: riseColor },
+                                                areaStyle: { color: 'rgba(236, 58, 55, 0.08)' },
+                                                symbol: 'circle',
+                                                symbolSize: 6,
+                                                // label: { show: true, fontSize: 10, formatter: '{c}' },
+                                                markLine: {
+                                                    silent: true,
+                                                    animation: false,
+                                                    data: [
+                                                        { yAxis: 3500, lineStyle: { color: '#999', type: 'dashed' } },
+                                                        { yAxis: 1200, lineStyle: { color: '#999', type: 'dashed' } },
+                                                    ],
+                                                },
+                                            },
+                                            {
+                                                name: '下跌',
+                                                type: 'line',
+                                                data: advanceDeclineData.map((d: any) => d.decline_count),
+                                                smooth: true,
+                                                lineStyle: { width: 2, color: fallColor },
+                                                itemStyle: { color: fallColor },
+                                                areaStyle: { color: 'rgba(0, 147, 173, 0.08)' },
+                                                symbol: 'circle',
+                                                symbolSize: 6,
+                                                // label: { show: true, fontSize: 10, formatter: '{c}' },
+                                            },
+                                        ],
+                                    }}
+                                />
+                            </Box>
+                        </Paper>
+                    }
                 </Paper>
-                <Paper sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50%', borderRadius: 0 }} square>
-                    <Typography variant='body2' color='text.secondary'>
-                        上涨家数大于3500，警惕情绪过热，不开新仓
-                        <br />
-                        上涨家数小于1200，可能情绪低点，适合轻仓低吸博弈，警惕指数破位
+                <Paper sx={{ display: 'flex', flexDirection: 'column', height: '50%', borderRadius: 0, flex: '1 0 1', maxHeight: '50%', overflow: 'auto' }} square>
+                    <Paper square sx={{ display: 'flex', py: 1 }}>
+                        <Button sx={{ ml: 1 }} variant={selectedIndicator === 'USHI1A0001' ? 'outlined' : 'text'} size='small' onClick={() => setSelectedIndicator('USHI1A0001')} >上证指数</Button>
+                        <Button sx={{ ml: 1 }} variant={selectedIndicator === 'URFI883421' ? 'outlined' : 'text'} size='small' onClick={() => setSelectedIndicator('URFI883421')} >同花顺全A(沪深)</Button>
+                        <Button sx={{ ml: 1 }} variant={selectedIndicator === 'rise_amount' ? 'outlined' : 'text'} size='small' onClick={() => setSelectedIndicator('rise_amount')} >涨跌家数</Button>
+                    </Paper>
+                    <Box display='flex' flexDirection='column' sx={{ m: 1 }}>
+                        <Typography variant='body1' color='text' sx={{ my: 1 }}>
+                            指数分析：
                         </Typography>
+
+                        <Typography variant='body2' color='text.secondary'>
+                            当前上证指数的5日线位于10日线之下，为震荡区间/下降趋势
+                            <br />
+                            指数位于5日线与10日线之下，应当空仓
+                        </Typography>
+                        <Typography variant='body1' color='text' sx={{ my: 1 }}>
+                            情绪分析：
+                        </Typography>
+                        <Typography variant='body2' color='text.secondary'>
+                            当前上涨家数1300家，暂无明显倾向
+                        </Typography>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography variant='body1' color='text.secondary' sx={{ my: 1 }}>
+                            说明：
+                        </Typography>
+                        <Typography variant='body2' color='text.secondary'>
+                            当5日线位于10日线之上，且指数位于5日线之上时，为上升趋势
+                            <br />
+                            若指数首次跌破5日线，则应减仓注意风险，跌破10日线则应该清仓。
+                            <br />
+                            但首次跌破可能只会变成震荡区间而不是反转，取决于左侧强度，震荡区间指数会反复穿梭于均线
+                            <br />
+                            当5日线位于10日线之下，则为下降趋势，应当空仓观望
+                            <br />
+                            上升趋势由5日线从下向上穿过10日线为开始，俗称“金叉”
+                            <br />
+                            <br />
+                            上涨家数大于3500，警惕情绪过热，不开新仓
+                            <br />
+                            上涨家数小于1200，可能情绪低点，适合轻仓低吸博弈，警惕指数破位
+                        </Typography>
+                    </Box>
+
                 </Paper>
             </Box>
         </Box>
