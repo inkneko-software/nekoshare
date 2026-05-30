@@ -2,7 +2,7 @@
 import StockData from '@/lib/StockData';
 import StockDayPrice from '@/lib/StockDayPrice';
 import { Box, Container, IconButton, SvgIcon, Typography } from '@mui/material';
-import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode, CrosshairMode, LineStyle, ChartOptions, ChartOptionsBase, LayoutOptions, DeepPartial, LineWidth, IChartApi, ISeriesApi, LineSeries, SeriesMarker } from 'lightweight-charts';
+import { AreaSeries, CandlestickSeries, createChart, ColorType, HistogramSeries, createSeriesMarkers, CandlestickData, Time, PriceScaleMode, CrosshairMode, LineStyle, ChartOptions, ChartOptionsBase, LayoutOptions, DeepPartial, LineWidth, IChartApi, ISeriesApi, LineSeries, SeriesMarker, LineType, AreaData } from 'lightweight-charts';
 import React, { useEffect, useRef, memo, useState } from 'react';
 import { PreOpenQualitiedResult } from '@/app/api/quantitative/getPreOpenQualified/route';
 import { RectangleDrawingTool } from './plugins/plugins/rectangle-drawing-tool/rectangle-drawing-tool';
@@ -47,7 +47,7 @@ export interface TradingViewWidgetProps {
     trendLines?: TrendLine[];
     pressurePoints?: PressurePoint[];
     highlightDate?: string;
-    //考虑整合突破结果
+    enableMAHighlight?: boolean
 }
 
 
@@ -58,7 +58,7 @@ https://tradingview.github.io/lightweight-charts/tutorials/how_to/price-line 价
 https://tradingview.github.io/lightweight-charts/plugin-examples/ 趋势线与箱体
 */
 
-export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints, highlightDate }: TradingViewWidgetProps) {
+export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints, highlightDate, enableMAHighlight }: TradingViewWidgetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [chartApi, setChartApi] = useState<IChartApi | null>(null)
@@ -128,6 +128,49 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
             containerRef.current.appendChild(chartElement);
             setChartApi(chart);
 
+            const ma5Data = calculateMA(candlesticks, 5);
+            const ma10Data = calculateMA(candlesticks, 10);
+
+            if (enableMAHighlight) {
+                const areaData: ({
+                    time: string;
+                    value: number;
+                    topColor?: string;
+                    bottomColor?: string;
+                    lineColor?: string;
+                })[] = []
+                for (let i = 0; i < ma5Data.length; ++i) {
+                    if (ma5Data[i].value > ma10Data[i].value && candlesticks[i].close > ma5Data[i].value) {
+                        areaData.push({
+                            time: candlesticks[i].time,
+                            value: candlesticks[i].close,
+                            topColor: 'rgba(235, 20, 20, 0.6)',
+                            bottomColor: 'rgba(202, 40, 0, 0.1)',
+                        })
+                    } else {
+                        if (areaData.length > 0) {
+                            areaData[areaData.length - 1].topColor = 'transparent'
+                            areaData[areaData.length - 1].bottomColor = 'transparent'
+                        }
+                        areaData.push({
+                            time: candlesticks[i].time,
+                            value: candlesticks[i].close,
+                            topColor: 'transparent',
+                            bottomColor: 'transparent',
+                        })
+                    }
+                }
+                console.log(areaData)
+                console.log(candlesticks)
+                chart.addSeries(AreaSeries, {
+                    lastValueVisible: false,
+                    crosshairMarkerVisible: false,
+                    lineColor: 'transparent',
+                    topColor: 'rgba(56, 33, 110,0.6)',
+                    bottomColor: 'rgba(56, 33, 110, 0.1)',
+                }).setData(areaData)
+            }
+
             // 蜡烛图series
             const candlestickSeries = chart.addSeries(CandlestickSeries, {
                 upColor: 'transparent',
@@ -191,7 +234,6 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                 priceLineVisible: false,
             });
 
-            const ma5Data = calculateMA(candlesticks, 5);
             ma5Series.setData(ma5Data);
 
             // 10日线型图series
@@ -204,7 +246,6 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                 priceLineVisible: false,
             });
 
-            const ma10Data = calculateMA(candlesticks, 10);
             ma10Series.setData(ma10Data);
 
             // 压力位标注：priceLine + seriesMarker
@@ -259,9 +300,9 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, dayPrice.length - suitableNum), to: dayPrice.length - 1 });
 
-            if (highlightDate !== undefined ){
+            if (highlightDate !== undefined) {
                 let index = dayPrice.findIndex(p => p.time === highlightDate);
-                if (index !== -1){
+                if (index !== -1) {
                     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, index - suitableNum), to: index });
                 }
             }
@@ -293,6 +334,8 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             }
 
+
+
             console.log(chart, candlestickSeries)
 
             return () => {
@@ -307,7 +350,7 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
 
             };
         },
-        [containerRef.current, candlesticks, trendLines, highlightDate]
+        [containerRef.current, candlesticks, trendLines, highlightDate, enableMAHighlight]
 
     );
 
