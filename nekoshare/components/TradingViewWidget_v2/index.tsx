@@ -47,7 +47,9 @@ export interface TradingViewWidgetProps {
     trendLines?: TrendLine[];
     pressurePoints?: PressurePoint[];
     highlightDate?: string;
-    enableMAHighlight?: boolean
+    enableMAHighlight?: boolean;
+    from?: string;
+    to?: string;
 }
 
 
@@ -58,7 +60,7 @@ https://tradingview.github.io/lightweight-charts/tutorials/how_to/price-line 价
 https://tradingview.github.io/lightweight-charts/plugin-examples/ 趋势线与箱体
 */
 
-export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints, highlightDate, enableMAHighlight }: TradingViewWidgetProps) {
+export default function TradingViewWidget({ candlesticks, rectangles, trendLines, pressurePoints, highlightDate, enableMAHighlight, from, to }: TradingViewWidgetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [chartApi, setChartApi] = useState<IChartApi | null>(null)
@@ -332,6 +334,10 @@ export default function TradingViewWidget({ candlesticks, rectangles, trendLines
                     }
                 }
 
+            }
+
+            if (from !== undefined && to !== undefined) {
+                chart.timeScale().setVisibleRange({ from: from, to: to })
             }
 
 
