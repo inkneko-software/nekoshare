@@ -62,6 +62,7 @@ export default function MainNavigationDrawer() {
     { text: '策略执行', icon: <ManageSearchOutlinedIcon />, href: '/v2/strategy-execution', sub_routes: '/v2/strategy-execution' },
     { text: '策略回测', icon: <HistoryOutlinedIcon />, href: '/v2/strategy-backtrace', sub_routes: '/v2/strategy-backtrace' },
     { text: '模拟交易', icon: <LocalAtmOutlinedIcon />, href: '/v2/trading', sub_routes: '/v2/trading' },
+    { text: '全景回测', icon: <HistoryOutlinedIcon />, href: '/v2/backtrace', sub_routes: '/v2/backtrace' },
   ]
   const DrawerList = (
     <Box sx={{ width: 250 }} role="presentation" onClick={toggleDrawer(false)}>
