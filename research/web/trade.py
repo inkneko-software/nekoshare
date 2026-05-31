@@ -17,6 +17,9 @@ from group_breakout.strategies.trend import get_rise_trend_line, get_down_trend_
 from group_breakout.strategies import trend
 from trade.automation import TradeHistory, tradeNextDay
 import os
+import json
+import re
+from pathlib import Path
 # class Input(BaseModel):
 #     a: float
 #     b: float
@@ -40,3 +43,57 @@ def getTradeResults(date: str = None) -> list[TradeHistory]:
     """
     results = tradeNextDay(date)
     return results
+
+
+@router.get(base_url + "/trade/getBacktestOverview")
+def getBacktestOverview():
+    """
+    读取 output 目录下所有 breakout_result_{date}.log 和 backtrace_result_{date}.log，
+    按日期聚合返回回测概览数据。
+    """
+    output_dir = Path("output")
+    if not output_dir.exists():
+        return {"data": {}}
+
+    data: dict[str, dict] = {}
+
+    # 扫描所有 .log 文件
+    for fpath in sorted(output_dir.iterdir()):
+        if not fpath.suffix == ".log":
+            continue
+        m = re.match(r"(breakout|backtrace)_result_(\d{8})\.log", fpath.name)
+        if not m:
+            continue
+        file_type = m.group(1)
+        date_key = m.group(2)
+
+        if date_key not in data:
+            data[date_key] = {}
+
+        try:
+            content = fpath.read_text(encoding="utf-8")
+            records = json.loads(content)
+        except Exception as e:
+            log.warning(f"读取文件 {fpath.name} 失败: {e}")
+            records = []
+
+        if file_type == "breakout":
+            data[date_key]["breakout_count"] = len(records)
+            data[date_key]["breakout_stocks"] = records
+        elif file_type == "backtrace":
+            data[date_key]["backtrace_count"] = len(records)
+            data[date_key]["backtrace_stocks"] = records
+
+            if records:
+                change_pcts = [r["change_pct"] for r in records]
+                data[date_key]["total_return"] = sum(change_pcts)
+                data[date_key]["avg_return"] = sum(change_pcts) / len(change_pcts)
+                data[date_key]["max_profit"] = max(change_pcts)
+                data[date_key]["max_drawdown"] = min(change_pcts)
+            else:
+                data[date_key]["total_return"] = 0
+                data[date_key]["avg_return"] = 0
+                data[date_key]["max_profit"] = 0
+                data[date_key]["max_drawdown"] = 0
+
+    return {"data": data}
