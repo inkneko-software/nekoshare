@@ -16,6 +16,13 @@ from model.VolumeBreakoutStrategyExecutingResult import (
 )
 from group_breakout import trade_day
 from strategy.high_volume_breakout import high_volume_breakout
+import json
+import os
+from pydantic import TypeAdapter
+from utils.log import LoggerFactory
+from dataclasses import asdict
+
+log = LoggerFactory.get_logger(__name__)
 
 
 def get_breakout_stocks(end_date: str) -> list[VolumeBreakoutStrategyExecutingResult]:
@@ -141,7 +148,40 @@ def tradeNextDay(trade_date: str) -> list[TradeHistory]:
     return results
 
 
+adapter = TypeAdapter(list[VolumeBreakoutStrategyExecutingResult])
+
+
+def loop_results():
+    start_date = datetime.strptime("20241105", "%Y%m%d").date()
+    end_date = datetime.strptime("20260506", "%Y%m%d").date()
+
+    if os.path.exists("output") == False:
+        os.mkdir("output")
+
+    current_date = start_date
+    while current_date < end_date:
+        current_date_str = current_date.strftime("%Y%m%d")
+        log.info(f"正在计算{current_date_str}的突破策略")
+        breakout_results = get_breakout_stocks(current_date_str)
+        with open(f"output/breakout_result_{current_date_str}.log", "wb") as f:
+            f.write(adapter.dump_json(breakout_results))
+
+        log.info(f"正在计算{current_date_str}的突破策略的交易结果")
+        backtrace_results = tradeNextDay(current_date_str)
+        with open(
+            f"output/backtrace_result_{current_date_str}.log", "w", encoding="utf8"
+        ) as f:
+            f.write(
+                json.dumps(
+                    [asdict(backtrace_result) for backtrace_result in backtrace_results]
+                )
+            )
+
+        current_date = trade_day.get_next_trading_day(current_date)
+
+
 if __name__ == "__main__":
-    results = tradeNextDay("20260113")
-    for result in results:
-        print(result)
+    # results = tradeNextDay("20260113")
+    # for result in results:
+    #     print(result)
+    loop_results()
