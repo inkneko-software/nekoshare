@@ -204,7 +204,7 @@ def tradeNextDay_v2(trade_date: str) -> list[TradeHistory]:
                         )
                     )
                     break
-                elif price.low < high_price * 0.95:
+                elif price.close < high_price * 0.95:
                     results.append(
                         TradeHistory(
                             result.code,
