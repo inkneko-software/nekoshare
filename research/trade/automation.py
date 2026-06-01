@@ -254,7 +254,7 @@ def loop_results():
             f.write(adapter.dump_json(breakout_results))
 
         log.info(f"正在计算{current_date_str}的突破策略的交易结果")
-        backtrace_results = tradeNextDay(current_date_str)
+        backtrace_results = tradeNextDay_v2(current_date_str)
         with open(
             f"output/backtrace_result_{current_date_str}.log", "w", encoding="utf8"
         ) as f:
