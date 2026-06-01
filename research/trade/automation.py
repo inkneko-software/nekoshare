@@ -1,10 +1,4 @@
-"""
-思路为获取某日的高量突破结果，在下一个交易日准备进行买入，并回测后10个交易日的表现
 
-买入条件为 如果高开，则高开向上1%买入，如果平开或低开，需要在价格大于昨日最高价1%的时候买入
-
-离场条件为收盘价跌破5日线，或者跌停。如果10个交易日仍未离场，则在第10个交易日收盘离场
-"""
 
 from dataclasses import dataclass
 import queue
@@ -73,6 +67,12 @@ def tradeNextDay(trade_date: str) -> list[TradeHistory]:
     """
     获取指定日期的选股结果，并于下一交易日开始按照要求进行交易
 
+    思路为获取某日的高量突破结果，在下一个交易日准备进行买入，并回测后10个交易日的表现
+
+    买入条件为 如果高开，则高开向上1%买入，如果平开或低开，需要在价格大于昨日最高价1%的时候买入
+
+    离场条件为收盘价跌破5日线，或者跌停。如果10个交易日仍未离场，则在第10个交易日收盘离场
+
     :param date: 日期，格式为 'YYYYMMDD'
     """
     trade_date = datetime.strptime(trade_date, "%Y%m%d").date()
@@ -128,6 +128,93 @@ def tradeNextDay(trade_date: str) -> list[TradeHistory]:
                             price.close,
                             "跌停",
                             (price.close - buy_price) / buy_price,
+                        )
+                    )
+                    break
+                elif i == len(prices[6:]) - 1:
+                    results.append(
+                        TradeHistory(
+                            result.code,
+                            result.name,
+                            prices[6].trade_date.strftime("%Y-%m-%d"),
+                            buy_price,
+                            price.trade_date.strftime("%Y-%m-%d"),
+                            price.close,
+                            "仍持有计算收益",
+                            (price.close - buy_price) / buy_price,
+                        )
+                    )
+                    break
+    return results
+
+
+
+def tradeNextDay_v2(trade_date: str) -> list[TradeHistory]:
+    """
+    获取指定日期的选股结果，并于下一交易日开始按照要求进行交易
+
+    思路为获取某日的高量突破结果，在下一个交易日准备进行买入，并回测后10个交易日的表现
+
+    买入条件为 如果高开，则高开向上1%买入，如果平开或低开，需要在价格大于昨日最高价1%的时候买入
+
+    离场条件为从入场价计算亏损5%。如果10个交易日仍未离场，则在第10个交易日收盘离场
+
+    :param date: 日期，格式为 'YYYYMMDD'
+    """
+    trade_date = datetime.strptime(trade_date, "%Y%m%d").date()
+    end_date = trade_date
+    for i in range(10):
+        end_date = trade_day.get_next_trading_day(end_date)
+    minus_5_days = trade_date
+    for i in range(5):
+        minus_5_days = trade_day.get_prev_trading_day(minus_5_days)
+    results = []
+    selected_stocks = get_breakout_stocks(trade_date.strftime("%Y%m%d"))
+    for result in selected_stocks:
+        prices = get_stock_day_price(result.code, minus_5_days, end_date)
+        if len(prices) < 7:
+            continue
+        buy_price = 0
+
+        if prices[6].open > prices[5].close:
+            # 如果第二日高开，则在高开价的基础上向上1%买入
+            buy_price = prices[6].open * 1.01
+        else:
+            # 如果第二日平开或低开，则在价格大于昨日最高价1%的时候买入
+            buy_price = prices[5].high * 1.01
+
+        if buy_price < prices[6].high and buy_price > prices[6].low:
+            # 如果第二日的最高价都没有达到买入价，则放弃交易
+            high_price = buy_price
+            for i, price in enumerate(prices[7:]):
+                if price.high > high_price:
+                    high_price = price.high
+                # 离场条件为从入场价计算亏损5%。如果10个交易日仍未离场，则在第10个交易日收盘离场
+                if price.low <= buy_price * 0.95:
+                    results.append(
+                        TradeHistory(
+                            result.code,
+                            result.name,
+                            prices[6].trade_date.strftime("%Y-%m-%d"),
+                            buy_price,
+                            price.trade_date.strftime("%Y-%m-%d"),
+                            min(price.low, buy_price * 0.95),
+                            "亏损5%止损",
+                            (min(price.low, buy_price * 0.95) - buy_price) / buy_price,
+                        )
+                    )
+                    break
+                elif price.low < high_price * 0.95:
+                    results.append(
+                        TradeHistory(
+                            result.code,
+                            result.name,
+                            prices[6].trade_date.strftime("%Y-%m-%d"),
+                            buy_price,
+                            price.trade_date.strftime("%Y-%m-%d"),
+                            high_price * 0.95,
+                            "冲高回落5%离场",
+                            (max(price.low, high_price * 0.95) - buy_price) / buy_price,
                         )
                     )
                     break

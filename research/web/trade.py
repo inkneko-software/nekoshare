@@ -15,7 +15,7 @@ from datetime import timedelta, date, datetime
 from model import *
 from group_breakout.strategies.trend import get_rise_trend_line, get_down_trend_line
 from group_breakout.strategies import trend
-from trade.automation import TradeHistory, tradeNextDay
+from trade.automation import TradeHistory, tradeNextDay_v2
 import os
 import json
 import re
@@ -41,7 +41,7 @@ def getTradeResults(date: str = None) -> list[TradeHistory]:
 
     离场条件为收盘价跌破5日线，或者跌停。如果10个交易日仍未离场，则在第10个交易日收盘离场
     """
-    results = tradeNextDay(date)
+    results = tradeNextDay_v2(date)
     return results
 
 
