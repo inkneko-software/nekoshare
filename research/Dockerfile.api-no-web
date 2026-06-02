@@ -1,7 +1,10 @@
 FROM python:3.12-slim-bookworm
 
 WORKDIR /research
-COPY ./research /research
-RUN pip install -r requirements.txt -i https://mirrors.tencent.com/pypi/simple/
+COPY ./research/requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.tencent.com/pypi/simple/
+
+COPY ./research .
 
 CMD [ "python3", "-m", "web.server" ]
