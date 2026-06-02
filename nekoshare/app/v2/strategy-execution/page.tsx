@@ -1,7 +1,7 @@
 'use client'
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
 import TradingViewWidget, { Candlestick, RectangleRegion } from '@/components/TradingViewWidget_v2';
-import { Box, Button, FormControl, FormControlLabel, FormGroup, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography } from '@mui/material';
+import {Alert, Snackbar, Box, Button, FormControl, FormControlLabel, FormGroup, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -79,6 +79,7 @@ export default function StrategyExecutionPage() {
     const [selectedId, setSelectedId] = React.useState(-1)
 
     const [conceptList, setConceptList] = React.useState<StockConcept[]>([])
+    const [copySuccess, setCopySuccess] = React.useState(false);
 
     const handleExecute = () => {
         setIsExecuting(true);
@@ -411,6 +412,26 @@ export default function StrategyExecutionPage() {
         fetchMissingConcepts();
     }, [isShowConcept, isExecuting, results, conceptMap])
 
+
+    const exportToClipboard = () => {
+        let text = "";
+
+        // 导出表格，格式为 代码\t名称\t涨跌幅\n{概念列表(概念名称: 概念详细说明)}
+        results.forEach(result => {
+            text += "<stock>\n";
+            text += "\t<code>" + result.name + "</code>\n";
+            text += "\t<change_pct>" + result.change_pct + '%' + "</change_pct>\n";
+
+            text += "\t<concepts>\n"
+            conceptMap[result.code].forEach(concept=>{
+                text += `\t\t<concept>\n\t\t\t<name>${concept.concept_name}</name>\n\t\t\t<explain>${concept.explain}</explain>\n\t\t</concept>\n`
+            })
+            text += "\t</concepts>\n"
+            text += "</stock>\n"
+        })
+        navigator.clipboard.writeText(text).then(() => setCopySuccess(true));;
+    }
+
     return (
         <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
             <Paper sx={{ width: '40%', display: 'flex', flexDirection: 'column' }} square>
@@ -457,8 +478,9 @@ export default function StrategyExecutionPage() {
                 </Box>
                 <Box sx={{ display: 'flex', padding: '8px 8px', marginTop: '8px' }}>
                     <Button variant='outlined' onClick={handleExecute} disabled={isExecuting} sx={{ width: '30%', marginRight: '8px' }}>执行策略</Button>
-                    <Button variant='outlined' onClick={recalculateRewards} sx={{ width: '30%', marginRight: '8px' }} disabled={isExecuting || isShowConcept}>计算收益</Button>
-                    <FormGroup sx={{ margin: '0px 8px', width: '30%' }}>
+                    <Button variant='outlined' onClick={recalculateRewards} sx={{ width: '20%', marginRight: '8px' }} disabled={isExecuting || isShowConcept}>计算收益</Button>
+                    <Button variant='outlined' onClick={exportToClipboard} sx={{ width: '20%', marginRight: '8px' }}>复制到剪切板</Button>
+                    <FormGroup sx={{ margin: '0px 8px', width: '20%' }}>
                         <FormControlLabel control={<Switch checked={isShowConcept} onChange={e => setIsShowConcept(e.target.checked)} />} label={'显示概念'} />
                     </FormGroup>
                 </Box>
@@ -494,6 +516,21 @@ export default function StrategyExecutionPage() {
                     ))}
                 </Box>
             </Paper>
+            <Snackbar
+                open={copySuccess}
+                autoHideDuration={2000}
+                onClose={() => setCopySuccess(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+                <Alert
+                    onClose={() => setCopySuccess(false)}
+                    severity="success"
+                    variant="filled"
+                    sx={{ width: '100%', color: 'white' }}
+                >
+                    已复制到剪贴板
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
