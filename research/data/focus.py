@@ -195,7 +195,7 @@ def get_limit_up_reason_list(date: str) -> list[LimitUpReason]:
         limit_up_reasons.append(
             LimitUpReason(
                 id=row[0],
-                trade_date=row[1],
+                trade_date=str(row[1]),
                 stock_code=row[2],
                 stock_name=row[3],
                 limit_up_type=row[4],
