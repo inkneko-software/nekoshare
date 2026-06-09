@@ -1,7 +1,7 @@
 'use client'
 import CommonPriceTable from '@/components/CommonPriceTable/CommonPriceTable';
 import TradingViewWidget, { Candlestick, RectangleRegion } from '@/components/TradingViewWidget_v2';
-import {Alert, Snackbar, Box, Button, FormControl, FormControlLabel, FormGroup, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography } from '@mui/material';
+import { Alert, Snackbar, Box, Button, FormControl, FormControlLabel, FormGroup, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -13,7 +13,8 @@ import StockDayPrice from '@/lib/StockDayPrice';
 import THSIndustryDayPrice from '@/lib/THSIndustryDayPrice';
 import PressurePoint from '@/lib/PressurePoint';
 import { isTradingDay, getLatestTradingDay } from '@/lib/chinese-holidays/TradingDays';
-
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 interface Reward {
     afterDay: number
     threeDay: number
@@ -130,7 +131,7 @@ export default function StrategyExecutionPage() {
                             throw new Error('网络响应错误');
                         }
                         let data = (await response.json()).data as StockDayPrice[];
-                        let day = (i: number) => {  return i >= data.length ? 0 : data[i].close };
+                        let day = (i: number) => { return i >= data.length ? 0 : data[i].close };
                         //从day0 到 day5
                         let day0 = day(0);
                         let day1 = day(1);
@@ -151,7 +152,7 @@ export default function StrategyExecutionPage() {
                             throw new Error('网络响应错误');
                         }
                         let data = (await response.json()).data as THSIndustryDayPrice[];
-                        let day = (i: number) => {  return i >= data.length ? 0 : data[i].close };
+                        let day = (i: number) => { return i >= data.length ? 0 : data[i].close };
 
 
                         //从day0 到 day5
@@ -423,13 +424,29 @@ export default function StrategyExecutionPage() {
             text += "\t<change_pct>" + result.change_pct + '%' + "</change_pct>\n";
 
             text += "\t<concepts>\n"
-            conceptMap[result.code].forEach(concept=>{
+            conceptMap[result.code].forEach(concept => {
                 text += `\t\t<concept>\n\t\t\t<name>${concept.concept_name}</name>\n\t\t\t<explain>${concept.explain}</explain>\n\t\t</concept>\n`
             })
             text += "\t</concepts>\n"
             text += "</stock>\n"
         })
         navigator.clipboard.writeText(text).then(() => setCopySuccess(true));;
+    }
+
+    const exportToFile = () => {
+        let text = '\n';
+        results.forEach(result => {
+            text += `${result.code.startsWith('0') ? '0' : '1'}${result.code}\n`;
+        });
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stock_pool_${selectedTradeDate.format("YYYYMMDD")}.ebk`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     return (
@@ -478,10 +495,27 @@ export default function StrategyExecutionPage() {
                 </Box>
                 <Box sx={{ display: 'flex', padding: '8px 8px', marginTop: '8px' }}>
                     <Button variant='outlined' onClick={handleExecute} disabled={isExecuting} sx={{ width: '30%', marginRight: '8px' }}>执行策略</Button>
-                    <Button variant='outlined' onClick={recalculateRewards} sx={{ width: '20%', marginRight: '8px' }} disabled={isExecuting || isShowConcept}>计算收益</Button>
-                    <Button variant='outlined' onClick={exportToClipboard} sx={{ width: '20%', marginRight: '8px' }}>复制到剪切板</Button>
+                    <Button variant='outlined' onClick={recalculateRewards} sx={{ width: '15%', marginRight: '8px' }} disabled={isExecuting || isShowConcept}>计算收益</Button>
+                    <Button
+                     variant='outlined'
+                      onClick={exportToClipboard} 
+                      sx={{ width: '15%', marginRight: '8px' }} 
+                      startIcon={<ContentCopyOutlinedIcon />}
+                      title='可用于大模型分析'
+                      >
+                        复制
+                      </Button>
+                    <Button
+                        variant='outlined'
+                        onClick={exportToFile}
+                        sx={{ width: '15%', marginRight: '8px' }}
+                        startIcon={<FileDownloadOutlinedIcon />}
+                        title='可用于导入通达信/同花顺远航版板块'
+                    >
+                        下载
+                    </Button>
                     <FormGroup sx={{ margin: '0px 8px', width: '20%' }}>
-                        <FormControlLabel control={<Switch checked={isShowConcept} onChange={e => setIsShowConcept(e.target.checked)} />} label={'显示概念'} />
+                        <FormControlLabel control={<Switch checked={isShowConcept} onChange={e => setIsShowConcept(e.target.checked)} />} label={'概念'} />
                     </FormGroup>
                 </Box>
                 <BackTracePriceTable
